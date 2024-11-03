@@ -11,11 +11,11 @@ class ZIPFIT:
         self, 
         source_dataset: str, 
         target_dataset: str,
-        source_load_fn: Callable[[str], List[str]], 
-        source_parse_fn: Callable[[dict], str],         
-        target_load_fn: Callable[[str], List[str]], 
-        target_parse_fn: Callable[[dict], str], 
         k: int,
+        source_load_fn: Optional[Callable[[str], List[str]]] = None, 
+        source_parse_fn: Optional[Callable[[dict], str]] = None,         
+        target_load_fn: Optional[Callable[[str], List[str]]] = None, 
+        target_parse_fn: Optional[Callable[[dict], str]] = None, 
         output_file: str = "top_k_sequences.jsonl",
         compression_algorithm: str = 'gzip'
     ):
@@ -45,7 +45,7 @@ class ZIPFIT:
         - compression_algorithm (str): Compression algorithm to use ('gzip' or 'lz4').
         """
 
-    def load_jsonl(self) -> List[str]:
+    def load_jsonl(self, file_path: str) -> List[str]:
         """Loads and returns the text field from a JSONL file.
 
         Returns:
@@ -53,12 +53,12 @@ class ZIPFIT:
         """
         data = []
         try:
-            with open(self.jsonl_file_path, 'r') as f:
+            with open(file_path, 'r') as f:
                 for line in f:
                     item = json.loads(line)
                     data.append(item['text']) 
         except FileNotFoundError:
-            print(f"Error: The file {self.jsonl_file_path} was not found.")
+            print(f"Error: The file {file_path} was not found.")
         except json.JSONDecodeError:
             print("Error: Failed to decode JSON from the file.")
         return data
