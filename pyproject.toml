@@ -1,0 +1,35 @@
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zip-fit"
+version = "0.0.7"
+authors = [
+  { name="Elyas Obbad", email="eobbad@stanford.edu" },
+]
+description = "Data Selection via Compression-Based Alignment"
+readme = "README.md"
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+license = { file = "LICENSE" }
+keywords = ["data selection", "compression", "zip-fit", "nlp", "language models"]
+
+dependencies = [
+    "numpy>=1.21.0",
+    "lz4>=3.1.10",
+    "datasets>=1.17.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "flake8>=3.9",
+    "black>=21.0",
+    "mypy>=0.910"
+]
