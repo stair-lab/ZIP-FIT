@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="zip-fit",
-    version="1.0.0",
+    version="1.0.8",
     author="Elyas Obbad",
     author_email="eobbad@stanford.edu",
     description="Data Selection via Compression-Based Alignment",

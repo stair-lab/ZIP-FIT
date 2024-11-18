@@ -1,6 +1,9 @@
 import json
 import gzip
 import lz4.frame
+import zstandard as zstd
+import brotli
+import lzma
 import numpy as np
 from multiprocessing import Pool, cpu_count
 from datasets import load_dataset
@@ -17,7 +20,8 @@ class ZIPFIT:
         target_load_fn: Optional[Callable[[str], List[str]]] = None, 
         target_parse_fn: Optional[Callable[[dict], str]] = None, 
         output_file: str = "top_k_sequences.jsonl",
-        compression_algorithm: str = 'gzip'
+        compression_algorithm: str = 'gzip',
+        compress_level: int = 0
     ):
         self.source_dataset = source_dataset
         self.target_dataset = target_dataset
@@ -28,6 +32,7 @@ class ZIPFIT:
         self.output_file = output_file
         self.compress_cache = {}
         self.k = k
+        self.compress_level = compress_level
         self.compression_algorithm = compression_algorithm
         
         """
@@ -97,9 +102,15 @@ class ZIPFIT:
             return self.compress_cache[data]
         
         if self.compression_algorithm == 'gzip':
-            compressed_size = len(gzip.compress(data.encode('utf-8'), compresslevel=1))
+            compressed_size = len(gzip.compress(data.encode('utf-8'), compresslevel=self.compress_level))
         elif self.compression_algorithm == 'lz4':
-            compressed_size = len(lz4.frame.compress(data.encode('utf-8')))
+            compressed_size = len(lz4.frame.compress(data.encode('utf-8'), compression_level=self.compress_level))
+        elif self.compression_algorithm == 'zstd':
+            compressed_size = len(zstd.ZstdCompressor(level=self.compress_level).compress(data.encode('utf-8')))
+        elif self.compression_algorithm == 'brotli':
+            compressed_data = brotli.compress(data.encode('utf-8'))
+        elif self.compression_algorithm == 'lzma':
+            compressed_data = lzma.compress(data.encode('utf-8'))
         else:
             raise ValueError(f"Unsupported compression algorithm: {self.compression_algorithm}")
 
@@ -184,4 +195,36 @@ class ZIPFIT:
                 f.write(json.dumps({'text': text}) + '\n')
 
         print(f"Top {self.k} sequences saved to {self.output_file}")
+    def main():
+        # Define the paths and target dataset
+        source_dataset = "/lfs/skampere1/0/eobbad/.cache/huggingface/hub/datasets--UDACA--Code-Mixed-Dataset/snapshots/4ea34026bf6a4b7cda65782406b7e32484a43ce0/combined_dataset.jsonl"
+        target_dataset = 'openai/openai_humaneval'
+
+        # Define the function to load the target dataset
+        def target_load_dataset_fn(dataset):
+            ds = load_dataset(dataset, split='test', trust_remote_code=True)
+            return ds
+
+        # Define the function to parse examples from the target dataset
+        def target_parse_example_fn(ex):
+            text = f"Problem description: {ex['prompt']} \nCanonical solution: {ex['canonical_solution']}"
+            return text
+
+        # Create an instance of ZIPFIT
+        zip_fit_instance = ZIPFIT(
+            source_dataset=source_dataset,
+            target_dataset=target_dataset,
+            target_load_fn=target_load_dataset_fn,
+            target_parse_fn=target_parse_example_fn,
+            k=100,  # Get top 10 sequences
+            output_file="top_k_sequences.jsonl",
+            compression_algorithm='gzip'  # Change to 'lz4' if desired
+        )
+
+        # Run the ZIPFIT process
+        zip_fit_instance.run()
+
+if __name__ == "__main__":
+    main()
+
 

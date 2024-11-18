@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zip-fit"
-version = "1.0.0"
+version = "1.0.8"
 authors = [
   { name="Elyas Obbad", email="eobbad@stanford.edu" },
 ]
