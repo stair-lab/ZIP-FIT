@@ -1,0 +1,9 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+zip_fit/zip_fit.egg-info/PKG-INFO
+zip_fit/zip_fit.egg-info/SOURCES.txt
+zip_fit/zip_fit.egg-info/dependency_links.txt
+zip_fit/zip_fit.egg-info/requires.txt
+zip_fit/zip_fit.egg-info/top_level.txt
