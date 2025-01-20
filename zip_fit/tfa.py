@@ -111,12 +111,15 @@ def compute_tfa(
     input_ids = inputs['input_ids']  # shape: (batch_size, seq_len)
 
     # -------------------------------------------------
-    # 4. Create right-shifted input by adding BOS at the start
+    # 4. Create right-shifted input by adding BOS at the start if BOS token not present already
     # -------------------------------------------------
-    right_shifted_input_ids = torch.cat([
-        torch.full((input_ids.shape[0], 1), bos_token_id, dtype=torch.long),  # shape: (batch_size, 1)
-        input_ids[:, :-1]                                                     # shape: (batch_size, seq_len - 1)
-    ], dim=1)  # shape: (batch_size, seq_len)
+    if input_ids[0, 0] != bos_token_id: 
+        right_shifted_input_ids = torch.cat([
+            torch.full((input_ids.shape[0], 1), bos_token_id, dtype=torch.long),  # shape: (batch_size, 1)
+            input_ids[:, :-1]                                                     # shape: (batch_size, seq_len - 1)
+        ], dim=1)  # shape: (batch_size, seq_len)
+    else:
+        right_shifted_input_ids = input_ids  # I don't think clone is needed since we never modify right shifted toks anyway
 
     # -------------------------------------------------
     # 5. Forward pass with the right-shifted inputs
@@ -131,6 +134,14 @@ def compute_tfa(
     # 6. Compute predictions
     # -------------------------------------------------
     predicted_token_ids = torch.argmax(logits, dim=-1)  # shape: (batch_size, seq_len)
+    print(f'{predicted_token_ids=}')
+    print(f'{input_ids=}')
+    print(f'{right_shifted_input_ids=}')
+    
+    print()
+    print(f'{predicted_token_ids.shape=}')
+    print(f'{input_ids.shape=}')
+    print(f'{right_shifted_input_ids.shape=}')
 
     # -------------------------------------------------
     # 7. Find the first *real* EOS position in each sequence
@@ -190,30 +201,36 @@ def main() -> None:
     seed_everything(seed=123)
 
     model_token_configs = [
+        # {
+        #     "name": "google/codegemma-2b",
+        #     "repo": "google/codegemma-2b",
+        # },
+        # {
+        #     "name": "google/gemma-2-2b",
+        #     "repo": "google/gemma-2-2b",
+        # },
+        # {
+        #     "name": "internlm2-math-plus-1_8b",
+        #     "repo": "internlm/internlm2-math-plus-1_8b",
+        # },
+        # {
+        #     "name": "Mistral-7B-v0.1",
+        #     "repo": "mistralai/Mistral-7B-v0.1",
+        # },
+        # {
+        #     "name": "Meta-Llama-3-8B",
+        #     "repo": "meta-llama/Meta-Llama-3-8B",
+        # },
+        # -- For debugging
         {
-            "name": "google/codegemma-2b",
-            "repo": "google/codegemma-2b",
-        },
-        {
-            "name": "google/gemma-2-2b",
-            "repo": "google/gemma-2-2b",
-        },
-        {
-            "name": "internlm2-math-plus-1_8b",
-            "repo": "internlm/internlm2-math-plus-1_8b",
-        },
-        {
-            "name": "Mistral-7B-v0.1",
-            "repo": "mistralai/Mistral-7B-v0.1",
-        },
-        {
-            "name": "Meta-Llama-3-8B",
-            "repo": "meta-llama/Meta-Llama-3-8B",
+            "name": "Meta-Llama-3-8B-Instruct",
+            "repo": "meta-llama/Meta-Llama-3-8B-Instruct",
         },
     ]
 
     # Standard test inputs for TFA
     input_texts = [
+        "The happy dog."
         "The quick brown fox jumps over the lazy dog.",
         "Artificial Intelligence is transforming the world of science."
     ]
