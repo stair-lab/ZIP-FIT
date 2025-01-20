@@ -1,0 +1,9 @@
+numpy>=1.21.0
+lz4>=3.1.10
+datasets>=1.17.0
+
+[dev]
+pytest>=6.0
+flake8>=3.9
+black>=21.0
+mypy>=0.910
