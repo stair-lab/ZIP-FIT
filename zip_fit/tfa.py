@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch import tensor
 from typing import List, Optional
 from transformers import (
     AutoTokenizer,
@@ -58,6 +59,8 @@ def compute_tfa(
     We handle the edge case where BOS == EOS by temporarily masking out the first token
     so it doesn't register as an 'early EOS' at index=0.
 
+    Only prepend BOS if the first token of the *first* sequence isn't already BOS.
+
     Parameters:
         model (nn.Module or PreTrainedModel): 
             A language model (Hugging Face CausalLM / decoder).
@@ -73,9 +76,9 @@ def compute_tfa(
             The PAD token ID. If None, we try tokenizer.pad_token_id, else fallback to eos_token_id.
 
     Returns:
-        float: The TFA score (scalar). 
-            Ratio of (correctly predicted tokens up to and including the first real EOS) 
-            over (total tokens up to first EOS), averaged across the batch.
+        float: 
+            The TFA score (scalar). Ratio of (correctly predicted tokens up to and including
+            the first real EOS) over (total tokens up to first EOS), averaged across the batch.
     """
 
     # -------------------------------------------------
@@ -109,17 +112,27 @@ def compute_tfa(
     inputs = tokenizer(input_texts, return_tensors='pt', padding=True, truncation=True)
     # 'inputs' -> 'input_ids': shape: (batch_size, seq_len), 'attention_mask': (batch_size, seq_len)
     input_ids = inputs['input_ids']  # shape: (batch_size, seq_len)
+    print(f'{input_ids.shape=}')
 
     # -------------------------------------------------
-    # 4. Create right-shifted input by adding BOS at the start if BOS token not present already
+    # 4. Create right-shifted input by adding BOS at the start if needed
     # -------------------------------------------------
-    if input_ids[0, 0] != bos_token_id: 
+    # Only do this if the *first* example's first token isn't already BOS.
+    # (If you want to do a check per-example, you'd do this in a loop.)
+    if input_ids[0, 0].item() != bos_token_id:
+        # if bos is not present in input, put it in while choping off eos from the end
         right_shifted_input_ids = torch.cat([
             torch.full((input_ids.shape[0], 1), bos_token_id, dtype=torch.long),  # shape: (batch_size, 1)
             input_ids[:, :-1]                                                     # shape: (batch_size, seq_len - 1)
         ], dim=1)  # shape: (batch_size, seq_len)
+        labels = input_ids  # shape: (batch_size, seq_len)
     else:
-        right_shifted_input_ids = input_ids  # I don't think clone is needed since we never modify right shifted toks anyway
+        # bos is present, so no need to do anything
+        right_shifted_input_ids = input_ids[:, :-1]
+        labels = input_ids[:, 1:]  # shape: (batch_size, seq_len - 1)
+    print(f'{input_ids.shape=}')
+    print(f'{right_shifted_input_ids.shape=}')
+    print(f'{labels.shape=}')
 
     # -------------------------------------------------
     # 5. Forward pass with the right-shifted inputs
@@ -134,46 +147,25 @@ def compute_tfa(
     # 6. Compute predictions
     # -------------------------------------------------
     predicted_token_ids = torch.argmax(logits, dim=-1)  # shape: (batch_size, seq_len)
-    print(f'{predicted_token_ids=}')
-    print(f'{input_ids=}')
-    print(f'{right_shifted_input_ids=}')
-    
-    print()
-    print(f'{predicted_token_ids.shape=}')
-    print(f'{input_ids.shape=}')
-    print(f'{right_shifted_input_ids.shape=}')
 
     # -------------------------------------------------
     # 7. Find the first *real* EOS position in each sequence
     # -------------------------------------------------
-    # If BOS == EOS, the model might treat token at index=0 as "the first EOS."
-    # So we do a quick trick: temporarily set the first token to a dummy ID (-1)
-    # to ensure it won't match 'eos_token_id'. Then revert it.
-    batch_size, seq_len = input_ids.shape
-    first_tokens = input_ids[:, 0].clone()  # shape: (batch_size,)
-    input_ids[:, 0] = -1  # Overwrite with -1 so it can't match eos_token_id
-
-    # Now the "true" earliest EOS is found (beyond the first token).
-    eos_1st_positions = (input_ids == eos_token_id).int().argmax(dim=1)  # shape: (batch_size,)
-
-    # Restore the original first tokens.
-    input_ids[:, 0] = first_tokens
+    assert labels[0, 0] != bos_token_id, 'Model is not trained to predict bos I think, so it shouldnt be predicting bos at the beginning or other weirdness like eos.'
+    eos_1st_positions = (labels == eos_token_id).int().argmax(dim=1)  # shape: (batch_size,)
 
     # -------------------------------------------------
     # 8. Build a mask to ignore tokens AFTER the first real EOS
     # -------------------------------------------------
-    sequence_length = seq_len  # same as input_ids.size(1)
-    indices = torch.arange(sequence_length).unsqueeze(0).to(input_ids.device)  # shape: (1, seq_len)
-
-    # For each batch element i, positions <= eos_1st_positions[i] => True,
-    # positions > eos_1st_positions[i] => False.
-    mask = indices <= eos_1st_positions.unsqueeze(1)  # shape: (batch_size, seq_len)
+    label_seq_len = labels.shape[-1]
+    indices = torch.arange(label_seq_len).unsqueeze(0).to(input_ids.device)  # shape: (1, seq_len)
+    mask = indices <= eos_1st_positions.unsqueeze(1)                   # shape: (batch_size, seq_len)
 
     # -------------------------------------------------
     # 9. Apply the mask to filter predictions and labels
     # -------------------------------------------------
     filtered_predictions = predicted_token_ids[mask]  # shape: (total_unmasked_tokens,)
-    filtered_labels = input_ids[mask]                 # shape: (total_unmasked_tokens,)
+    filtered_labels = labels[mask]                 # shape: (total_unmasked_tokens,)
 
     # -------------------------------------------------
     # 10. Compute accuracy
@@ -194,7 +186,7 @@ def main() -> None:
         c) Compute TFA on some sample input_texts (and code input for codegemma).
         d) We assert that TFA is in [0,1].
     """
-    # 0) Set GPU
+    # 0) Optionally restrict GPU usage
     os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 
     # 1) Seed everything
@@ -231,8 +223,8 @@ def main() -> None:
     # Standard test inputs for TFA
     input_texts = [
         "The happy dog."
-        "The quick brown fox jumps over the lazy dog.",
-        "Artificial Intelligence is transforming the world of science."
+        # "The quick brown fox jumps over the lazy dog.",
+        # "Artificial Intelligence is transforming the world of science."
     ]
 
     # A special code-like string for "google/codegemma-2b"
