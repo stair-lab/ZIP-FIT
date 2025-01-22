@@ -40,7 +40,8 @@ setup(
 
         'trl',
         'transformers', 
-        'accelerate',
+        # 'accelerate',
+        'accelerate>=0.26.0',
         'peft',
 
         'bitsandbytes',

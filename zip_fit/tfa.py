@@ -26,17 +26,17 @@ def seed_everything(seed: int = 0, hf_timeout: float = 5) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)  # If you use multi-GPU.
+        torch.cuda.manual_seed_all(seed)  # If you use multi-GPU
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
     # Attempt to seed HF only on GPU (some versions can freeze if done on CPU).
     if torch.cuda.is_available():
-        hf_set_seed(seed)  # occasionally can cause halting on some systems
+        hf_set_seed(seed)
     else:
         print("Warning: HF is currently only deterministic/seeded when using GPU")
 
-    # Try to seed vllm
+    # Try to seed vLLM
     try:
         from vllm import set_seed as vllm_set_seed
         vllm_set_seed(seed)
@@ -46,20 +46,21 @@ def seed_everything(seed: int = 0, hf_timeout: float = 5) -> None:
 
 def compute_tfa(
     model: nn.Module,
-    tokenizer: PreTrainedTokenizer,
+    # tokenizer: PreTrainedTokenizer,
+    repo: str,
     input_texts: List[str],
     bos_token_id: Optional[int] = None,
     eos_token_id: Optional[int] = None,
     pad_token_id: Optional[int] = None
 ) -> float:
     """
-    Computes Teacher-Forced Accuracy (TFA), rewarding the model for correctly predicting
-    the first EOS token while ignoring predictions for padding tokens.
+    Computes Teacher-Forced Accuracy (TFA) by feeding the model unshifted inputs,
+    then comparing the model's position t with the label at position t+1.
+    Specifically:
+      - predictions_for_eval = predicted_token_ids[:, :-1]
+      - labels_for_eval      = input_ids[:, 1:]
 
-    We handle the edge case where BOS == EOS by temporarily masking out the first token
-    so it doesn't register as an 'early EOS' at index=0.
-
-    Only prepend BOS if the first token of the *first* sequence isn't already BOS.
+    We then ignore everything after the first real EOS in labels_for_eval.
 
     Parameters:
         model (nn.Module or PreTrainedModel): 
@@ -71,19 +72,20 @@ def compute_tfa(
         bos_token_id (Optional[int]): 
             The BOS token ID. If None, we try tokenizer.bos_token_id, else fallback to eos_token_id.
         eos_token_id (Optional[int]): 
-            The EOS token ID. If None, we try tokenizer.eos_token_id. This is needed for correct masking.
+            The EOS token ID. If None, we try tokenizer.eos_token_id.
         pad_token_id (Optional[int]): 
             The PAD token ID. If None, we try tokenizer.pad_token_id, else fallback to eos_token_id.
 
     Returns:
-        float: 
-            The TFA score (scalar). Ratio of (correctly predicted tokens up to and including
-            the first real EOS) over (total tokens up to first EOS), averaged across the batch.
+        float: The TFA score (scalar).
+               Ratio of (correctly predicted tokens up to and including the first EOS)
+               over (total tokens up to first EOS), averaged across the batch.
     """
-
     # -------------------------------------------------
     # 1. Resolve BOS, EOS, PAD from arguments or fallback
     # -------------------------------------------------
+    print(f'{repo=}')
+    tokenizer = AutoTokenizer.from_pretrained(repo, padding_side="right", trust_remote_code=True) # note: add_eos_token not always implemented by tokenizer especially if trust_remote_code is True.
     if eos_token_id is None:
         if tokenizer.eos_token_id is None:
             raise ValueError("EOS token is required but neither eos_token_id nor tokenizer.eos_token_id is set.")
@@ -94,6 +96,7 @@ def compute_tfa(
             bos_token_id = tokenizer.bos_token_id
         else:
             bos_token_id = eos_token_id
+            assert False
 
     if pad_token_id is None:
         if tokenizer.pad_token_id is not None:
@@ -107,71 +110,76 @@ def compute_tfa(
     tokenizer.pad_token_id = pad_token_id
 
     # -------------------------------------------------
-    # 3. Tokenize the input texts
+    # 3. Tokenize the input texts (unshifted)
     # -------------------------------------------------
-    inputs = tokenizer(input_texts, return_tensors='pt', padding=True, truncation=True)
-    # 'inputs' -> 'input_ids': shape: (batch_size, seq_len), 'attention_mask': (batch_size, seq_len)
+    input_texts = [input_text + tokenizer.eos_token for input_text in input_texts]
+    inputs = tokenizer(input_texts, return_tensors='pt', padding=True, max_length=13, truncation=True)
     input_ids = inputs['input_ids']  # shape: (batch_size, seq_len)
-    print(f'{input_ids.shape=}')
+    print(f'{input_ids=}')
+    print(f'{tokenizer.batch_decode(input_ids)=}')
+    # 'attention_mask' is ignored here, though you might use it for ignoring pads
+    attention_mask = inputs['attention_mask']
+    print(f'{attention_mask=}')
+    # we need eos but to not go through all seqs let's check just first two to have eos present
+    assert all(eos_token_id in input_id for input_id in input_ids[2:, :]), f'Input ids lacks eos token incorrectly: {input_ids=}'
 
     # -------------------------------------------------
-    # 4. Create right-shifted input by adding BOS at the start if needed
+    # 4. Forward pass (feed input_ids unshifted)
     # -------------------------------------------------
-    # Only do this if the *first* example's first token isn't already BOS.
-    # (If you want to do a check per-example, you'd do this in a loop.)
-    if input_ids[0, 0].item() != bos_token_id:
-        # if bos is not present in input, put it in while choping off eos from the end
-        right_shifted_input_ids = torch.cat([
-            torch.full((input_ids.shape[0], 1), bos_token_id, dtype=torch.long),  # shape: (batch_size, 1)
-            input_ids[:, :-1]                                                     # shape: (batch_size, seq_len - 1)
-        ], dim=1)  # shape: (batch_size, seq_len)
-        labels = input_ids  # shape: (batch_size, seq_len)
-    else:
-        # bos is present, so no need to do anything
-        right_shifted_input_ids = input_ids[:, :-1]
-        labels = input_ids[:, 1:]  # shape: (batch_size, seq_len - 1)
-    print(f'{input_ids.shape=}')
-    print(f'{right_shifted_input_ids.shape=}')
-    print(f'{labels.shape=}')
-
-    # -------------------------------------------------
-    # 5. Forward pass with the right-shifted inputs
-    # -------------------------------------------------
+    # input_ids = input_ids[:, 1:]
     with torch.no_grad():
-        outputs = model(input_ids=right_shifted_input_ids)
-        # outputs.logits: (batch_size, seq_len, vocab_size)
-
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
     logits = outputs.logits  # shape: (batch_size, seq_len, vocab_size)
 
     # -------------------------------------------------
-    # 6. Compute predictions
+    # 5. Compute predictions (argmax)
     # -------------------------------------------------
     predicted_token_ids = torch.argmax(logits, dim=-1)  # shape: (batch_size, seq_len)
 
     # -------------------------------------------------
-    # 7. Find the first *real* EOS position in each sequence
+    # 6. Align predictions & labels for teacher forcing
     # -------------------------------------------------
-    assert labels[0, 0] != bos_token_id, 'Model is not trained to predict bos I think, so it shouldnt be predicting bos at the beginning or other weirdness like eos.'
-    eos_1st_positions = (labels == eos_token_id).int().argmax(dim=1)  # shape: (batch_size,)
+    # Typical GPT logic: the logit at position t tries to guess token (t+1)
+    # So we skip the last prediction and skip the first label to align them
+    preds_for_eval = predicted_token_ids[:, :-1]  # shape: (batch_size, seq_len - 1)
+    labels_for_eval = input_ids[:, 1:]           # shape: (batch_size, seq_len - 1)
+    print(f'{input_ids.shape=}')
+    print(f'{preds_for_eval.shape=}')
+    print(f'{labels_for_eval.shape=}')
+
+    print(f'{input_ids=}')
+    print(f'{preds_for_eval=}')
+    print(f'{labels_for_eval=}')
+
+    print(f'{tokenizer.batch_decode(input_ids)=}')
+    print(f'{tokenizer.batch_decode(preds_for_eval)=}')
+    print(f'{tokenizer.batch_decode(labels_for_eval)=}')
 
     # -------------------------------------------------
-    # 8. Build a mask to ignore tokens AFTER the first real EOS
+    # 7. Find the first real EOS position in labels_for_eval
     # -------------------------------------------------
-    label_seq_len = labels.shape[-1]
-    indices = torch.arange(label_seq_len).unsqueeze(0).to(input_ids.device)  # shape: (1, seq_len)
-    mask = indices <= eos_1st_positions.unsqueeze(1)                   # shape: (batch_size, seq_len)
+    # e.g. if labels_for_eval[i] = [..., eos_token_id, ...], we want that index
+    eos_positions = (labels_for_eval == eos_token_id).int().argmax(dim=1)
+    # shape: (batch_size,)
 
     # -------------------------------------------------
-    # 9. Apply the mask to filter predictions and labels
+    # 8. Build a mask to ignore tokens after that EOS
     # -------------------------------------------------
-    filtered_predictions = predicted_token_ids[mask]  # shape: (total_unmasked_tokens,)
-    filtered_labels = labels[mask]                 # shape: (total_unmasked_tokens,)
+    seq_len_minus1 = labels_for_eval.size(1)  # (seq_len - 1)
+    indices = torch.arange(seq_len_minus1).unsqueeze(0).to(labels_for_eval.device)  # shape: (1, seq_len - 1)
+    mask = indices <= eos_positions.unsqueeze(1)  # shape: (batch_size, seq_len - 1)
 
     # -------------------------------------------------
-    # 10. Compute accuracy
+    # 9. Filter predictions and labels
+    # -------------------------------------------------
+    filtered_predictions = preds_for_eval[mask]
+    filtered_labels = labels_for_eval[mask]
+
+    # -------------------------------------------------
+    # 10. Accuracy
     # -------------------------------------------------
     correct_predictions = (filtered_predictions == filtered_labels).float()
-    accuracy = correct_predictions.mean().item()  # scalar float
+    accuracy = correct_predictions.mean().item()
 
     return accuracy
 
@@ -183,14 +191,13 @@ def main() -> None:
     2) For each model, we:
         a) Load the model and tokenizer.
         b) Dynamically get bos_token_id, eos_token_id, and pad_token_id from the tokenizer.
-        c) Compute TFA on some sample input_texts (and code input for codegemma).
+        c) Compute TFA on some sample input_texts.
         d) We assert that TFA is in [0,1].
     """
-    # 0) Optionally restrict GPU usage
-    os.environ['CUDA_VISIBLE_DEVICES'] = '7'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '7'  # (Optional) GPU selection
 
     # 1) Seed everything
-    seed_everything(seed=123)
+    seed_everything()
 
     model_token_configs = [
         # {
@@ -218,6 +225,10 @@ def main() -> None:
             "name": "Meta-Llama-3-8B-Instruct",
             "repo": "meta-llama/Meta-Llama-3-8B-Instruct",
         },
+        # {
+        #     "name": "google/gemma-2-2b-it",
+        #     "repo": "google/gemma-2-2b-it"
+        # }
     ]
 
     # Standard test inputs for TFA
@@ -227,57 +238,25 @@ def main() -> None:
         # "Artificial Intelligence is transforming the world of science."
     ]
 
-    # A special code-like string for "google/codegemma-2b"
-    code_to_ft = "def solution():\n    return True"
-    special_code_input = [
-        f"<|fim_prefix|>{code_to_ft}<|fim_suffix|><|fim_middle|>"
-    ]
-
     for config in model_token_configs:
         name = config["name"]
         repo = config["repo"]
 
         print(f"Evaluating {name} from {repo}")
         model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(repo, trust_remote_code=True)
-        tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
+        # tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
 
-        # Retrieve the actual BOS, EOS, PAD IDs from the tokenizer (if they exist)
-        bos_id = tokenizer.bos_token_id
-        eos_id = tokenizer.eos_token_id
-        pad_id = tokenizer.pad_token_id
-
-        # 1) TFA on standard input_texts
+        # Compute TFA
         tfa_score_general = compute_tfa(
             model=model,
-            tokenizer=tokenizer,
+            repo=repo,
             input_texts=input_texts,
-            bos_token_id=bos_id,
-            eos_token_id=eos_id,
-            pad_token_id=pad_id
         )
-        # Check TFA is within [0, 1]
+        # Ensure it's a valid probability
         assert 0.0 <= tfa_score_general <= 1.0, (
-            f"TFA (General) out of expected [0,1] range: {tfa_score_general}"
+            f"TFA out of [0,1] range: {tfa_score_general}"
         )
-        print(f"[{name}] TFA (General Inputs): {tfa_score_general:.4f}")
-
-        # 2) If it's codegemma, also do TFA on the special code input
-        if "codegemma-2b" in name.lower():
-            tfa_score_code = compute_tfa(
-                model=model,
-                tokenizer=tokenizer,
-                input_texts=special_code_input,
-                bos_token_id=bos_id,
-                eos_token_id=eos_id,
-                pad_token_id=pad_id
-            )
-            # Check TFA is within [0, 1]
-            assert 0.0 <= tfa_score_code <= 1.0, (
-                f"TFA (Code Input) out of expected [0,1] range: {tfa_score_code}"
-            )
-            print(f"[{name}] TFA (Special Code Input): {tfa_score_code:.4f}")
-
-        print()  # blank line after each model's results
+        print(f"[{name}] TFA (General Inputs): {tfa_score_general:.4f}\n")
 
 
 if __name__ == "__main__":
