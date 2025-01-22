@@ -6,7 +6,7 @@ from tqdm import tqdm
 import os
 import wandb
 import torch
-from tfa import compute_tfa
+from _tfa import compute_tfa
 
 class TFACallback(TrainerCallback):
     def __init__(self, tokenizer, train_input_texts, eval_input_texts=None):
