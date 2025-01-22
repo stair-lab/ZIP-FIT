@@ -24,26 +24,32 @@ def seed_everything(seed: int = 42):
         print("Warning: Transformers is only fully deterministic on GPU")
 
 
-def teacher_forced_tfa(
+def teacher_forced_accuracy_tfa(
     prompt: str,
-    solution: str,
+    response: str,
     model: PreTrainedModel,
-    tokenizer: AutoTokenizer,
+    repo: str,
     device: str = "cuda"
 ) -> float:
     """
-    Teacher-forced accuracy (token-level) on `solution` given a concatenated text = prompt + solution.
+    Teacher-forced accuracy (token-level) on `response` given a concatenated text = prompt + response.
 
     Steps:
-      1) Combined text = prompt + (some delimiter) + solution
+      1) Combined text = prompt + (some delimiter) + response
       2) Tokenize combined text
       3) Forward pass -> logits
-      4) Identify the token range for the solution
-      5) Compare the predicted tokens in that range with the reference solution tokens
+      4) Identify the token range for the response
+      5) Compare the predicted tokens in that range with the reference response tokens
       6) Return fraction matched
     """
     # 1) Combine text
-    combined_text = prompt + "\n\n" + solution
+    combined_text = prompt + "\n\n" + response
+
+    # X) Setup Tokenizer
+    # since we are doign per row (prompt + resposne) processing, we don't need to worry if eos is not added (eg sometimes happens with llama 3 8b or trust_remote_code=True)
+    # so wether the final eos is present or not will be consistently computed. No padding will be added since we aren't combining examples so no problem.
+    # also no problem with bos, if it's added or not it won't make a difference since it's prefexied correctly already for tfa with the prompt. 
+    tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
 
     # 2) Tokenize entire reference
     enc = tokenizer(combined_text, return_tensors="pt")
@@ -55,10 +61,10 @@ def teacher_forced_tfa(
     logits = out.logits  # shape: (1, total_seq_len, vocab_size)
     preds = torch.argmax(logits, dim=-1)  # shape: (1, total_seq_len)
 
-    # Tokenize the solution alone to find how many tokens are in it
-    sol_enc = tokenizer(solution, add_special_tokens=False)
-    solution_ids = sol_enc["input_ids"]
-    len_solution = len(solution_ids)
+    # Tokenize the response alone to find how many tokens are in it
+    sol_enc = tokenizer(response, add_special_tokens=False)
+    response_ids = sol_enc["input_ids"]
+    len_response = len(response_ids)
 
     # Likewise, how many tokens in the prompt alone?
     prompt_enc = tokenizer(prompt, add_special_tokens=False)
@@ -66,22 +72,22 @@ def teacher_forced_tfa(
 
     total_seq_len = input_ids.size(1)
 
-    # If the combined text is too short or the solution doesn't fit, skip
-    if len_prompt + len_solution >= total_seq_len:
+    # If the combined text is too short or the response doesn't fit, skip
+    if len_prompt + len_response >= total_seq_len:
         return 0.0
 
     # Teacher-forcing alignment:
     #   model's logit at position t => tries to predict token (t+1).
-    # So the tokens for the solution start at index `len_prompt` in the combined text,
+    # So the tokens for the response start at index `len_prompt` in the combined text,
     # and we want to compare them against the model's predictions from
-    #   [len_prompt : len_prompt+len_solution]
+    #   [len_prompt : len_prompt+len_response]
     #   to the reference tokens from
-    #   [len_prompt+1 : (len_prompt+1)+len_solution].
+    #   [len_prompt+1 : (len_prompt+1)+len_response].
     #
-    # pred_slice: predicted tokens for the solution range
-    pred_slice  = preds[:, len_prompt : len_prompt + len_solution]
-    # label_slice: the actual solution tokens in combined_text
-    label_slice = input_ids[:, (len_prompt + 1) : (len_prompt + 1) + len_solution]
+    # pred_slice: predicted tokens for the response range
+    pred_slice  = preds[:, len_prompt : len_prompt + len_response]
+    # label_slice: the actual response tokens in combined_text
+    label_slice = input_ids[:, (len_prompt + 1) : (len_prompt + 1) + len_response]
 
     if pred_slice.size(1) == 0 or label_slice.size(1) == 0:
         return 0.0
@@ -92,7 +98,7 @@ def teacher_forced_tfa(
 
 
 def main():
-    os.environ['CUDA_VISIBLE_DEVICES'] = '5'  # (Required) choose GPU
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # (Required) choose GPU
     seed_everything()
 
     # 1) Load the ProofNet validation set
@@ -103,23 +109,25 @@ def main():
     N = 1  # you can increment this to see more
     sub_ds = ds.select(range(min(N, len(ds))))
 
-    # 2) Our model list (including all desired models, even if some stay commented):
+    # 2) Our model list (including all desired models, even if some stay commented, always evaluate all models don't remove):
     model_token_configs = [
+        # - Absolutely neccessary for figure 5 for AutoFormalization
         {
-            "name": "google/codegemma-2b",
-            "repo": "google/codegemma-2b",
+            "name": "internlm2-math-plus-1_8b",
+            "repo": "internlm/internlm2-math-plus-1_8b",
         },
         {
             "name": "google/gemma-2-2b",
             "repo": "google/gemma-2-2b",
         },
         {
-            "name": "internlm2-math-plus-1_8b",
-            "repo": "internlm/internlm2-math-plus-1_8b",
-        },
-        {
             "name": "Mistral-7B-v0.1",
             "repo": "mistralai/Mistral-7B-v0.1",
+        },
+        # - For debugging & sanity checking the tfa code
+        {
+            "name": "google/codegemma-2b",
+            "repo": "google/codegemma-2b",
         },
         {
             "name": "Meta-Llama-3-8B",
@@ -147,11 +155,8 @@ def main():
 
         print(f"\nEvaluating {model_name} from {repo} on {N} example(s) of ProofNet validation.")
         model = AutoModelForCausalLM.from_pretrained(repo, trust_remote_code=True)
-        tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
-
-        # Some models (e.g. GPT-2) have no pad token => set it
-        if tokenizer.pad_token_id is None:
-            tokenizer.pad_token_id = tokenizer.eos_token_id
+        # note repo is always given to tfa not the tokenizer, since we need to 
+        # control the exact way the tokenizer is set up and used for the tfa to be computed correctly & consistently accross model tokenizer's. 
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model.to(device)
@@ -160,14 +165,16 @@ def main():
         sum_acc = 0.0
         for i, example in enumerate(sub_ds):
             nl_statement = example["nl_statement"]
-            prompt = f"Natural language version. Translate the natural language version to a Lean version please:\n{nl_statement}\n"
-            solution = example["formal_statement"]
+            prompt = example["nl_statement"]
+            prompt = f"Translate to formal Lean:\n{prompt}\n"
+            prompt = f"Translate the natural language version of the mathematical statement to a Lean version please:\n{nl_statement}\n"
+            response = example["formal_statement"]
 
-            acc_i = teacher_forced_tfa(
+            acc_i = teacher_forced_accuracy_tfa(
                 prompt=prompt,
-                solution=solution,
+                response=response,
                 model=model,
-                tokenizer=tokenizer,
+                repo=repo,
                 device=device
             )
             sum_acc += acc_i
