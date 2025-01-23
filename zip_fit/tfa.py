@@ -37,30 +37,30 @@ def seed_everything(seed: int = 42):
 
 def teacher_forced_accuracy_tfa(
     prompt: str,
-    response: str,
+    gold_response: str,
     model: PreTrainedModel,
     repo: str,
     device: str = "cuda"
 ) -> float:
     """
-    Teacher-forced accuracy (token-level) on `response` given a concatenated text = prompt + response.
+    Teacher-forced accuracy (token-level) on `gold_response` given a concatenated text = prompt + gold_response.
 
     Steps:
-      1) Combined text = prompt + "\n\n" + response
+      1) Combined text = prompt + "\n\n" + gold_response
       2) Tokenize combined text => shape: (1, total_seq_len)
       3) Forward pass => logits shape: (1, total_seq_len, vocab_size)
-      4) Identify the token range for the response
-      5) Compare the predicted tokens in that range with the reference response tokens
+      4) Identify the token range for the gold_response
+      5) Compare the predicted tokens in that range with the reference gold_response tokens
       6) Return fraction matched in [0, 1]
 
     Notes about BOS/EOS/PAD:
-      - Because we do per-example calls (prompt+response) only, no extra padding is needed.
+      - Because we do per-example calls (prompt+gold_response) only, no extra padding is needed.
       - If the model inserts BOS/EOS automatically, that is consistent for each example's TFA.
-      - We do NOT forcibly add an EOS token; if you need that, append it manually to `response`.
+      - We do NOT forcibly add an EOS token; if you need that, append it manually to `gold_response`.
     """
 
     # 1) Combine text
-    combined_text = prompt + "\n\n" + response
+    combined_text = prompt + "\n\n" + gold_response
 
     # 2) Use the tokenizer from the same `repo` to ensure consistency
     tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
@@ -76,9 +76,9 @@ def teacher_forced_accuracy_tfa(
     logits = outputs.logits  # shape: (1, total_seq_len, vocab_size)
     preds = torch.argmax(logits, dim=-1)  # shape: (1, total_seq_len)
 
-    # 4) Tokenize the response alone to find how many tokens it has
-    response_enc = tokenizer(response, add_special_tokens=False)
-    len_response = len(response_enc["input_ids"])
+    # 4) Tokenize the gold_response alone to find how many tokens it has
+    gold_response_enc = tokenizer(gold_response, add_special_tokens=False)
+    len_gold_response = len(gold_response_enc["input_ids"])
 
     # Tokenize the prompt alone for length
     prompt_enc = tokenizer(prompt, add_special_tokens=False)
@@ -86,19 +86,19 @@ def teacher_forced_accuracy_tfa(
 
     total_seq_len = input_ids.size(1)
 
-    # If the combined text is too short or the response doesn't fit, skip
-    if len_prompt + len_response >= total_seq_len:
+    # If the combined text is too short or the gold_response doesn't fit, skip
+    if len_prompt + len_gold_response >= total_seq_len:
         return 0.0
 
     # Teacher forcing alignment:
     #   model's position t attempts to predict token at position t+1
-    pred_slice = preds[:, len_prompt : (len_prompt + len_response)]
-    label_slice = input_ids[:, (len_prompt + 1) : (len_prompt + 1 + len_response)]
+    pred_slice = preds[:, len_prompt : (len_prompt + len_gold_response)]
+    label_slice = input_ids[:, (len_prompt + 1) : (len_prompt + 1 + len_gold_response)]
 
     if pred_slice.size(1) == 0 or label_slice.size(1) == 0:
         return 0.0
 
-    correctness = (pred_slice == label_slice).float()  # shape: (1, number_of_response_tokens)
+    correctness = (pred_slice == label_slice).float()  # shape: (1, number_of_gold_response_tokens)
     acc = correctness.mean().item()
     return acc
 
