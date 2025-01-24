@@ -152,8 +152,8 @@ def compute_loss_for_subds(
     We then average those sums across examples => final float.
 
     sub_ds[i] is expected to have:
-      'nl_statement': the prompt
-      'formal_statement': the gold reference
+      'prompt': the prompt
+      'gold_response': the gold reference
     or adapt as needed.
 
     Returns: float in [0..∞).
@@ -165,19 +165,17 @@ def compute_loss_for_subds(
     sum_loss = 0.0
     for i in range(N):
         ex = sub_ds[i]
-        nl_statement    = ex["nl_statement"]
-        formal_statement= ex["formal_statement"]
+        prompt    = ex["prompt"]
+        gold_response= ex["gold_response"]
 
         # build prompt if desired
         if prompt_format_fn is not None:
-            prompt = prompt_format_fn(nl_statement)
-        else:
-            prompt = (f"Translate the statement to Lean:\n{nl_statement}\n")
+            prompt = prompt_format_fn(prompt)
 
         # measure
         loss_i = loss_full_gold_ref(
             prompt=prompt,
-            gold_response=formal_statement,
+            gold_response=gold_response,
             model=model,
             repo=repo,
             device=device,
@@ -209,6 +207,15 @@ def main():
     seed_everything()
 
     ds = load_dataset("hoskinson-center/proofnet", split="validation")
+
+    # Example of a custom prompt format function
+    def my_prompt_format(prompt: str) -> str:
+        return (
+            "Translate the natural language version of the mathematical statement "
+            f"to a formal Lean version:\n{prompt}\n"
+        )
+    ds = ds.map(lambda example: {'prompt': my_prompt_format(example['nl_statement']), 'gold_response': example['formal_statement']}, num_proc=24)
+
     N = 5
     sub_ds = ds.select(range(min(N, len(ds))))
 
@@ -230,10 +237,10 @@ def main():
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def my_prompt_format(nl_statement: str) -> str:
+    def my_prompt_format(prompt: str) -> str:
         return (
             "Translate the natural language version of the mathematical statement "
-            f"to a formal Lean version:\n{nl_statement}\n"
+            f"to a formal Lean version:\n{prompt}\n"
         )
 
     for cfg in model_token_configs:
