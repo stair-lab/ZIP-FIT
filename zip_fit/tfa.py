@@ -141,7 +141,7 @@ def compute_tfa_for_subds(
 
         acc_i = teacher_forced_accuracy_tfa(
             prompt=prompt,
-            response=formal_statement,
+            gold_response=formal_statement,
             model=model,
             repo=repo,
             device=device
@@ -183,26 +183,26 @@ def main():
             "name": "Mistral-7B-v0.1",
             "repo": "mistralai/Mistral-7B-v0.1",
         },
-        {
-            "name": "google/codegemma-2b",
-            "repo": "google/codegemma-2b",
-        },
-        {
-            "name": "Meta-Llama-3-8B",
-            "repo": "meta-llama/Meta-Llama-3-8B",
-        },
-        {
-            "name": "Meta-Llama-3-8B-Instruct",
-            "repo": "meta-llama/Meta-Llama-3-8B-Instruct",
-        },
-        {
-            "name": "google/gemma-2-2b-it",
-            "repo": "google/gemma-2-2b-it",
-        },
-        {
-            "name": "GPT-2 (small)",
-            "repo": "gpt2",
-        },
+        # {
+        #     "name": "google/codegemma-2b",
+        #     "repo": "google/codegemma-2b",
+        # },
+        # {
+        #     "name": "Meta-Llama-3-8B",
+        #     "repo": "meta-llama/Meta-Llama-3-8B",
+        # },
+        # {
+        #     "name": "Meta-Llama-3-8B-Instruct",
+        #     "repo": "meta-llama/Meta-Llama-3-8B-Instruct",
+        # },
+        # {
+        #     "name": "google/gemma-2-2b-it",
+        #     "repo": "google/gemma-2-2b-it",
+        # },
+        # {
+        #     "name": "GPT-2 (small)",
+        #     "repo": "gpt2",
+        # },
     ]
 
     # Example of a custom prompt format function
