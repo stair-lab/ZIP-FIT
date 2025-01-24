@@ -5,6 +5,7 @@ import os
 import fire
 import wandb
 
+import train
 from train.tfa_callback import TfaCallback 
 
 from tfa import seed_everything
@@ -31,14 +32,18 @@ def main(**config):
     login(token=token)
 
     # -- Get model
-    model, tok = train.models.load_model_and_tok(config.get('pretrained_model_name_or_path', 'google/gemma-2-2b-it'), config) 
+    repo = config.get('pretrained_model_name_or_path', 'internlm/internlm2-math-plus-1_8b')
+    # repo = config.get('pretrained_model_name_or_path', 'google/gemma-2-2b')
+    # repo = config.get('pretrained_model_name_or_path', 'mistralai/Mistral-7B-v0.1')
+    model, tok = train.models.load_model_and_tok(repo, config) 
 
     # -- Load datasets
     ds_name_or_path = config.get('ds_name_or_path', 'hoskinson-center/proofnet')
-    train_split, val_split = config.get('train_split', 'func_original_53_10_30_2024'), config.get('val_split', 'func_variations_265_11_23_2024')
+    train_split, val_split = config.get('train_split', 'validation'), config.get('val_split', 'test')
     print(f'\n---> {ds_name_or_path=} {train_split=} {val_split=}\n')
-    train_dataset = load_math_style_dataset(ds_name_or_path, tok, config.get('max_seq_length', 512), config, model, end=config.get('end_train', 1), split=train_split)
+    train_dataset = load_proofnet(ds_name_or_path, tok, config.get('max_seq_length', 512), config, model, end=config.get('end_train', 1), split=train_split)
     print_first_example_after_decode(train_dataset, tok)
+
     eval_dataset = load_math_style_dataset(ds_name_or_path, tok, config.get('max_seq_length', 512), config, end=36, split=val_split)
     print(f'{len(train_dataset)=}\n{len(eval_dataset)=}')
     wandb.config.update({'dataset': f'{ds_name_or_path} ({train_split=} {val_split=})'})

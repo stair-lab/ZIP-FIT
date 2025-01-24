@@ -55,8 +55,10 @@ def teacher_forced_accuracy_tfa(
 
     Notes about BOS/EOS/PAD:
       - Because we do per-example calls (prompt+gold_response) only, no extra padding is needed.
-      - If the model inserts BOS/EOS automatically, that is consistent for each example's TFA.
-      - We do NOT forcibly add an EOS token; if you need that, append it manually to `gold_response`.
+      - We do not forcibly add BOS or EOS here. We skip it to match a "bare-bones" style,
+        similar to the updated tfa.py that also ignores explicit BOS/EOS tokens.
+      - If the combined text is truncated or too short, we return 0.0 as a fallback.
+
     """
 
     # 1) Combine text
@@ -117,7 +119,7 @@ def compute_tfa_for_subds(
       sub_ds: The subset of the dataset (like a HuggingFace 'Dataset' slice).
       model:  A language model (transformers PreTrainedModel).
       repo:   The model repo string, used to load the correct tokenizer in teacher_forced_accuracy_tfa.
-      prompt_format_fn: Optional function that transforms the raw 'nl_statement' into a 'prompt'.
+      prompt_format_fn: Optional function that transforms the raw 'prompt' into a 'prompt'.
       device: 'cuda' or 'cpu'.
 
     Returns:
@@ -127,21 +129,15 @@ def compute_tfa_for_subds(
     count = 0
 
     for i, example in enumerate(sub_ds):
-        nl_statement = example["nl_statement"]
-        formal_statement = example["formal_statement"]
+        prompt = example["prompt"]
+        gold_response = example["gold_response"]
 
         if prompt_format_fn is not None:
-            prompt = prompt_format_fn(nl_statement)
-        else:
-            # Default: straightforward instruction
-            prompt = (
-                "Translate the natural language version of the mathematical statement "
-                f"to a formal Lean version:\n{nl_statement}\n"
-            )
+            prompt = prompt_format_fn(prompt)
 
         acc_i = teacher_forced_accuracy_tfa(
             prompt=prompt,
-            gold_response=formal_statement,
+            gold_response=gold_response,
             model=model,
             repo=repo,
             device=device
@@ -164,6 +160,14 @@ def main():
 
     # 1) Load the ProofNet validation set
     ds = load_dataset("hoskinson-center/proofnet", split="validation")
+
+    # Example of a custom prompt format function
+    def my_prompt_format(prompt: str) -> str:
+        return (
+            "Translate the natural language version of the mathematical statement "
+            f"to a formal Lean version:\n{prompt}\n"
+        )
+    ds = ds.map(lambda example: {'prompt': my_prompt_format(example['nl_statement']), 'gold_response': example['formal_statement']}, num_proc=24)
 
     # We'll just do the first N examples for demonstration
     N = 5
@@ -204,13 +208,6 @@ def main():
         #     "repo": "gpt2",
         # },
     ]
-
-    # Example of a custom prompt format function
-    def my_prompt_format(nl_statement: str) -> str:
-        return (
-            "Translate the natural language version of the mathematical statement "
-            f"to a formal Lean version:\n{nl_statement}\n"
-        )
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
