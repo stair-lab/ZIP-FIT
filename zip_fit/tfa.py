@@ -377,7 +377,7 @@ def minimal_tfa_trainer_test():
 
     # 2) Load a small model (e.g. GPT-2).
     model_name = "gpt2"
-    # model_name = "google/gemma-2-2b"
+    model_name = "google/gemma-2-2b"
     model = AutoModelForCausalLM.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
