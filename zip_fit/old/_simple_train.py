@@ -11,8 +11,8 @@ import wandb
 import sys
 
 from train.callbacks import GenCallbackHFGen, PUTNAM_AXIOM_PROMPT_TEMPLATE
-from train.data import load_math_style_dataset, print_first_example_after_decode, load_dataset_text_field_only 
-import train.models
+from old.data import load_math_style_dataset, print_first_example_after_decode, load_dataset_text_field_only 
+import old.models
 
 from train.utils import seed_everything
 
@@ -60,7 +60,7 @@ def main(**config):
 
     # -- Get model
     # model, tok = train.models.load_model_and_tok(config.get('pretrained_model_name_or_path', 'google/gemma-2-2b'), config) 
-    model, tok = train.models.load_model_and_tok(config.get('pretrained_model_name_or_path', 'google/gemma-2-2b-it'), config) 
+    model, tok = old.models.load_model_and_tok(config.get('pretrained_model_name_or_path', 'google/gemma-2-2b-it'), config) 
     # model, tok = train.models.load_model_and_tok(config.get('pretrained_model_name_or_path', 'google/gemma-2-9b'), config) 
     # model, tok = train.models.load_model_and_tok(config.get('pretrained_model_name_or_path', 'meta-llama/Llama-3.1-8B')) 
 
