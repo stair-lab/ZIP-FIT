@@ -368,6 +368,7 @@ def minimal_tfce_trainer_test():
     run_name = f'tfce test test proofnet gpt2' + f'{kwargs}' 
     # run_name = 'tfce validaton test proofnet gpt2' + f'{kwargs}' 
     run = wandb.init(mode=kwargs.get('mode', 'online'), project="huggingface", name=run_name, save_code=True, config=kwargs)
+    wandb.save(__file__) # save current code now, don't wait to wandb.finish, also useful: wandb.save("*.py") # upload all .py files in current directory
     config = kwargs
 
     # 1) Load a small model (like GPT-2)
@@ -416,21 +417,29 @@ def minimal_tfce_trainer_test():
         "gold_response": ex["formal_statement"]
     }, num_proc=24)
 
+    # 3.1) Subsmaple for tfce sanity checking
+    n_subsample = 25
+    indices = random.sample(range(len(ds_train)), k=n_subsample)
+    ds_train = ds_train.select(indices)
+    ds_eval = ds_eval.select(indices)
+
     # 4) minimal training args
     training_args = TrainingArguments(
         output_dir="./test-tfce-output",
         do_train=True,
         do_eval=True,
-        evaluation_strategy="steps",
-        eval_steps=1,
-        num_train_epochs=1,
+        # evaluation_strategy="steps",
+        # eval_steps=1,
+        evaluation_strategy="epoch",
+        num_train_epochs=15,
         logging_steps=1,
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=2,
         remove_unused_columns=False,  # ensure prompt/gold_response remain accessible
         save_strategy="no",
-        gradient_accumulation_steps=2,
+        # gradient_accumulation_steps=1,
         # gradient_checkpointing=config.get('gradient_checkpointing', True), # careful might give issues, but not in skampere1
-        optim=config.get('optim', 'paged_adamw_32bit'),
+        learning_rate=config.get('learning_rate', 1e-5),
+        # optim=config.get('optim', 'paged_adamw_32bit'),
     )
 
     # 5) attach TfceCallback
