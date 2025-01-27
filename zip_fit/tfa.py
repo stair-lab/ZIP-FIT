@@ -372,6 +372,8 @@ def minimal_tfa_trainer_test():
     """
     from transformers import TrainingArguments, Trainer
 
+    os.environ['CUDA_VISIBLE_DEVICES'] = '5'  # choose GPU
+
     # 1) Basic seeding
     seed_everything(42)
 
@@ -388,8 +390,8 @@ def minimal_tfa_trainer_test():
             "Translate the natural language version of the mathematical statement "
             f"to a formal Lean version:\n{prompt}\n"
         )
-    # ds_train = load_dataset("hoskinson-center/proofnet", split="validation")
-    ds_train = load_dataset("hoskinson-center/proofnet", split="test")
+    ds_train = load_dataset("hoskinson-center/proofnet", split="validation")
+    # ds_train = load_dataset("hoskinson-center/proofnet", split="test")
     ds_train = ds_train.with_format('torch')  
     ds_train = ds_train.map(
         lambda example: {
@@ -433,7 +435,7 @@ def minimal_tfa_trainer_test():
        do_train=True,
        do_eval=True,
     #    max_steps=1,                # Only 1 step
-       num_train_epochs=1,
+       num_train_epochs=4,
        evaluation_strategy="steps",# Evaluate every 'eval_steps'
        eval_steps=1,               # so we'll evaluate after 1 step
        logging_steps=1,            # log after every step

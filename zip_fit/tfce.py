@@ -20,6 +20,19 @@ from transformers import (
 )
 from datasets import load_dataset, Dataset
 import wandb
+from datetime import datetime
+import os
+from socket import gethostname
+
+def get_current_tmux_session_number() -> str:
+    """ Returns the current tmux session number. """
+    import subprocess
+    try:
+        # 'tmux display-message -p "#S"' gets the current session's name/number.
+        output = subprocess.check_output(['tmux', 'display-message', '-p', '#S'], text=True)
+        return output.strip()
+    except Exception:
+        return ""
 
 def seed_everything(seed: int = 42):
     """
@@ -345,9 +358,21 @@ def minimal_tfce_trainer_test():
     from transformers import TrainingArguments, Trainer
 
     seed_everything(42)
+    
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # choose GPU
+    kwargs = {}
+    today = datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss') # eg '2024_m01_d22_t13h_00m_30s'
+    tmux_sess_num: str = get_current_tmux_session_number()
+    kwargs = kwargs | {'today': today, 'tmux_sess_num': tmux_sess_num, 'hostname': gethostname()}
+    run_name = f'{kwargs}' 
+    run_name = f'tfce test test proofnet gpt2' + f'{kwargs}' 
+    # run_name = 'tfce validaton test proofnet gpt2' + f'{kwargs}' 
+    run = wandb.init(mode=kwargs.get('mode', 'online'), project="huggingface", name=run_name, save_code=True, config=kwargs)
+    config = kwargs
 
     # 1) Load a small model (like GPT-2)
     model_name = "gpt2"
+    # model_name = "google/gemma-2-2b"
     model = AutoModelForCausalLM.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
@@ -359,7 +384,8 @@ def minimal_tfce_trainer_test():
             f"to a formal Lean version:\n{prompt}\n"
         )
 
-    ds_train = load_dataset("hoskinson-center/proofnet", split="validation")
+    ds_train = load_dataset("hoskinson-center/proofnet", split="test")
+    # ds_train = load_dataset("hoskinson-center/proofnet", split="validation")
     ds_train = ds_train.map(lambda ex: {
         "text": my_prompt_format(ex["nl_statement"])
                  + ex["formal_statement"]
@@ -370,7 +396,7 @@ def minimal_tfce_trainer_test():
         tokenized = tokenizer(
             examples["text"], 
             padding="max_length", 
-            max_length=128, 
+            max_length=256, 
             truncation=True
         )
         tokenized["labels"] = tokenized["input_ids"].copy()
@@ -395,22 +421,25 @@ def minimal_tfce_trainer_test():
         output_dir="./test-tfce-output",
         do_train=True,
         do_eval=True,
-        max_steps=1,
         evaluation_strategy="steps",
         eval_steps=1,
+        num_train_epochs=1,
         logging_steps=1,
-        per_device_train_batch_size=2,
+        per_device_train_batch_size=1,
         remove_unused_columns=False,  # ensure prompt/gold_response remain accessible
-        save_strategy="no"
+        save_strategy="no",
+        gradient_accumulation_steps=2,
+        # gradient_checkpointing=config.get('gradient_checkpointing', True), # careful might give issues, but not in skampere1
+        optim=config.get('optim', 'paged_adamw_32bit'),
     )
 
     # 5) attach TfceCallback
     callback = TfceCallback(
         tfce_dataset=ds_eval,
         repo=model_name,
-        n_begin=2,   # 2 samples at train begin
-        n_during=1,  # 1 sample at each on_evaluate
-        n_end=2,     # 2 samples at train end
+        n_begin=186,   # X samples at train begin
+        n_during=186,  # Y sample at each on_evaluate
+        n_end=186,     # Z samples at train end
         device="cuda",
         reduction="mean"
     )
@@ -425,6 +454,11 @@ def minimal_tfce_trainer_test():
 
     # 6) train
     trainer.train()
+
+    # 7) End Wandb Run
+    run.alert(title="Run Completed", text=f"Run finished, run url: {run.get_url()}")
+    print(f'{run.get_url()=}')
+    wandb.finish()
 
 
 if __name__ == "__main__":
