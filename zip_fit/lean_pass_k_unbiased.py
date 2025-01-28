@@ -2,76 +2,64 @@
 #!/usr/bin/env python3
 """
 Implements the unbiased Pass@k estimator from the Codex paper [Chen et al., 2021],
-plus a demonstration of using PyPantograph to check Lean 4 code (theorems, etc.)
-for compilation correctness, including syntax/type errors that do not raise
-exceptions by default.
+plus a demonstration of using **vLLM** to generate Lean 4 code and measure syntactic
+or "fully correct" compilation success with PyPantograph.
+
+We replace the old GPT-2 pipeline approach with a vLLM approach:
+    from vllm import LLM, SamplingParams
+    # generate completions for each prompt
+
+Then we apply our pass@k logic to these completions, checking each snippet's
+Lean 4 compilation success via PyPantograph. We do *strict* checks or syntax-only
+checks, depending on your preference (see the check_lean_* function).
 
 References:
- - Official OpenAI HumanEval code, which uses the same binomial formula:
+ - Official OpenAI HumanEval code, for pass@k formula:
    https://github.com/openai/human-eval/blob/master/human_eval/evaluation.py
  - "Evaluating Large Language Models Trained on Code" (Chen et al., 2021)
+ - vLLM docs: https://github.com/vllm-project/vllm
+ - PyPantograph docs: https://github.com/stanford-centaur/PyPantograph
 
 --------------------------------------------------------------------------------
 Unbiased Pass@k:
 ~~~~~~~~~~~~~~~~
-For a single problem, if we generate 'n' code completions and find 'c' correct,
+For a single problem, if we generate n completions and find c that pass,
 the unbiased pass@k is:
-
-    pass@k = 1 - ( (n-c choose k) / (n choose k) )
-
-Edge Cases:
- - If c = 0 => pass@k=0
- - If c >= n => pass@k=1
- - If (n - c) < k => pass@k=1 (can't fill all k picks with incorrect)
-
-We use a product form for numerical stability:
-  pass@k = 1 - ∏_{i=0 to k-1} [ (n-c-i) / (n-i) ]
+   pass@k = 1 - ( (n-c choose k)/(n choose k) )
+We handle edge cases c=0, c>=n, or (n-c)<k => pass@k=1 or 0.
 
 --------------------------------------------------------------------------------
-Why Checking Lean Code is Non-trivial:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-PyPantograph's `server.load_sorry(...)` does *not* throw an exception for every
-syntactic or type error. This mimics Lean 4's design: partial errors typically
-become "messages" or "goals" within the same file.
+Usage Steps:
+  1) pip install vllm
+  2) pip install PyPantograph
+  3) Ensure Lean 4 is installed
+  4) python lean_pass_k_unbiased.py --model /path/to/model [--max-n 5] etc.
 
-Hence, if you pass an obviously wrong snippet like `theorem lemma : 2+2=5 := by rfl`,
-it may not raise an exception. Instead, we must:
-  1) Inspect the returned `CompilationUnit` objects
-  2) Look for leftover messages with "error" or unsolved goals
-  3) Decide that means a compilation failure
-
-Therefore, we do the checks explicitly:
- - If `messages` from a compilation unit indicate an error, we fail.
- - If `goal_state is not None`, that means Lean is left with a hole or sorry-based
-   partial proof. If we demand "fully proven," we consider that a fail (or you can
-   be more lenient if you only want syntax to pass).
-
-In short, we define `check_lean_compiles_strict` which:
-   1) calls `server.load_sorry(...)`
-   2) iterates over each `CompilationUnit` returned
-   3) if any unit's `.messages` mention errors, or if we want zero leftover goals,
-      we return `False`
-   4) Otherwise return `True` if no errors remain
-
---------------------------------------------------------------------------------
-Usage:
-  1) Ensure Lean, PyPantograph, transformers, torch, numpy installed
-  2) Run: python lean_pass_k_unbiased.py
+(We provide a basic example of how to gather completions from a vLLM model
+and compute pass@k. You can adapt for your own code.)
 """
 
+import argparse
 import numpy as np
 from typing import List
-from transformers import pipeline, set_seed
+
 from pantograph.server import Server
-from pantograph.data import CompilationUnit, TacticInvocation
+from pantograph.data import CompilationUnit
 
+# The user must install vllm from https://github.com/vllm-project/vllm
+# e.g. pip install vllm
+from vllm import LLM, SamplingParams
 
+# ------------------------------------------------------------------------
+# Seeding
+# ------------------------------------------------------------------------
 def seed_everything(seed: int = 42) -> None:
     """
-    Seed Python, NumPy, and PyTorch for reproducibility.
+    Seed Python, NumPy, and Torch. 
+    (vLLM's random seed is set via the sampling_params or 
+     environment variables, but we'll do a global seed too.)
     """
     import random
-    import numpy as np
     import torch
     from transformers import set_seed as hf_set_seed
 
@@ -80,25 +68,19 @@ def seed_everything(seed: int = 42) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+    hf_set_seed(seed)  # ensure HF transformers reproducibility, if used
 
-    if torch.cuda.is_available():
-        hf_set_seed(seed)
-    else:
-        print("Warning: Transformers is only fully deterministic on GPU")
-
-
+# ------------------------------------------------------------------------
+# Pass@k function
+# ------------------------------------------------------------------------
 def pass_at_k(n: int, c: int, k: int) -> float:
     """
-    Compute the unbiased pass@k for a single problem using the Codex/HumanEval approach.
-
-    pass@k = 1 - ( (n - c choose k) / (n choose k) )
-            = 1 - ∏_{i=0 to k-1} [(n-c-i)/(n-i)]
-
-    Edge-cases ensure we return 0 or 1 if c=0 or c >= n or (n-c)<k.
+    Compute unbiased pass@k from the Codex/HumanEval approach:
+      pass@k = 1 - ( (n-c choose k)/(n choose k) )
+              = 1 - Π_{i=0..k-1}[ (n-c-i)/(n-i) ]
     """
     if c == 0:
         return 0.0
@@ -114,158 +96,165 @@ def pass_at_k(n: int, c: int, k: int) -> float:
         if numerator < 0:
             return 1.0
         product_term *= (numerator / denominator)
-
     return 1.0 - product_term
 
-
-def generate_snippets(prompt: str, num_samples: int = 5, max_length: int = 64) -> List[str]:
-    """
-    Generates Lean 4 code snippets from a textual prompt using GPT-2 (toy example).
-
-    This is just for demonstration: GPT-2 is not trained on Lean, so it's
-    likely to produce nonsense in real usage. But it demonstrates the pipeline.
-    """
-    generator = pipeline("text-generation", model="gpt2")
-    outputs = generator(
-        prompt,
-        num_return_sequences=num_samples,
-        max_length=max_length,
-        do_sample=True,
-        temperature=1.0,
-    )
-    return [o["generated_text"] for o in outputs]
-
-
+# ------------------------------------------------------------------------
+# Checking Lean code with PyPantograph
+# ------------------------------------------------------------------------
 def check_lean_compiles_strict(snippet: str, server: Server, require_no_goals: bool = True) -> bool:
     """
-    Checks if a snippet is valid Lean 4 code, *strictly*, by:
-      1) server.load_sorry(file=snippet) -> returns list[CompilationUnit]
-      2) For each CompilationUnit:
-         - If it has any `messages` containing "error", or
-         - If it has leftover goals (goal_state != None) and we require full proof => fail
-    If no errors or leftover goals, we declare success.
-
-    Args:
-        snippet: Lean 4 code snippet
-        server:  Pantograph Server
-        require_no_goals: if True, any leftover goals => fail
-
-    Returns:
-        bool: True if fully compiled with no leftover errors or goals
+    Strict check: 
+      - Use server.load_sorry(...) to parse the snippet as a file of Lean code.
+      - If any compilation unit has messages containing 'error', fail.
+      - If require_no_goals=True and there's leftover goals => fail.
+    => Return True if no error or leftover goals remain.
     """
     try:
         units = server.load_sorry(snippet)
-        # If "error" in result => already raises ServerError, so we skip the except block
     except Exception:
-        # Hard parse error or something
-        return False
+        return False  # Parse or server error => fail
 
-    # Now check each CompilationUnit for leftover messages or goals
     for cu in units:
-        # If there's any "error" or "error:" mention in cu.messages => fail
+        # If any message has 'error', fail
         for msg in cu.messages:
-            lower_msg = msg.lower()
-            # A typical check: if "error" is in the string => fail
-            if "error" in lower_msg:
+            if 'error' in msg.lower():
                 return False
-
-        # If user wants no leftover goals, but .goal_state is not None => we see that as partial
+        # If leftover goals => fail if require_no_goals
         if require_no_goals and cu.goal_state is not None:
-            # Means there's at least one sorry/hole or leftover type error, so fail
             return False
-
-    # If we pass all checks => success
     return True
 
+# ------------------------------------------------------------------------
+# vLLM code generation
+# ------------------------------------------------------------------------
+def generate_lean_snippets_with_vllm(
+    prompts: List[str],
+    llm: LLM,
+    n: int,
+    sampling_params: SamplingParams,
+) -> List[List[str]]:
+    """
+    For each prompt in 'prompts', we request 'n' completions from vLLM,
+    then gather them as strings in a list-of-lists.
 
-def run_pass_k_eval(
-    docstrings: List[str],
+    Returns:
+      completions[i] => the list of 'n' code snippets for prompts[i].
+    """
+    all_completions: List[List[str]] = []
+    # vLLM's LLM.generate returns a list of BatchOutput, each with .outputs
+    # We'll do it in single-batch mode if the user only has a few prompts,
+    # or you can chunk them for large-scale usage.
+
+    # We'll just do them one prompt at a time for clarity:
+    for prompt in prompts:
+        output = llm.generate([prompt], sampling_params)  # single-prompt
+        # output is a list w/ length=1 for single-prompt
+        # output[0].outputs is a list of n completions
+        completions_for_prompt = []
+        if len(output) > 0:
+            for i, outcomp in enumerate(output[0].outputs):
+                completions_for_prompt.append(outcomp.text)
+        else:
+            # no completions => empty
+            pass
+        all_completions.append(completions_for_prompt)
+
+    return all_completions
+
+# ------------------------------------------------------------------------
+# Evaluate pass@k
+# ------------------------------------------------------------------------
+def run_pass_k_eval_vllm(
+    prompts: List[str],
     server: Server,
+    llm: LLM,
+    sampling_params: SamplingParams,
     k: int = 5,
-    num_samples: int = 10
+    n: int = 10
 ) -> float:
     """
-    Evaluate pass@k for each docstring: generate code with GPT-2,
-    check how many compile under strict rules, then compute pass@k.
+    1) For each prompt in 'prompts', get n completions from vLLM
+    2) Check compilation success (# correct)
+    3) Compute pass@k for each prompt, then average
     """
-    pass_vals: List[float] = []
+    all_completions = generate_lean_snippets_with_vllm(prompts, llm, n, sampling_params)
 
-    for idx, statement in enumerate(docstrings):
-        # Generate completions
-        completions = generate_snippets(prompt=statement, num_samples=num_samples)
-        # Count how many are correct
-        num_correct = sum(check_lean_compiles_strict(c, server) for c in completions)
-        # Pass@k
-        this_pass_k = pass_at_k(num_samples, num_correct, k)
-        pass_vals.append(this_pass_k)
+    pass_values: List[float] = []
+    for idx, (prompt, completions_for_prompt) in enumerate(zip(prompts, all_completions)):
+        # Count how many compile
+        num_correct = sum(check_lean_compiles_strict(c, server) for c in completions_for_prompt)
+        p_k = pass_at_k(n, num_correct, k)
+        pass_values.append(p_k)
 
-        print(f"\n[{idx+1}/{len(docstrings)}] Problem: {repr(statement)}")
-        print(f"  #Generated={num_samples}, #Correct={num_correct}, pass@{k}={this_pass_k:.3f}")
+        print(f"\nPrompt #{idx+1}: {repr(prompt)}")
+        print(f"  #Generated={n}, #Correct={num_correct}, pass@{k}={p_k:.3f}")
 
-    return float(np.mean(pass_vals)) if pass_vals else 0.0
+    return float(np.mean(pass_values)) if pass_values else 0.0
 
-
-def test_manual_snippets(server: Server) -> None:
-    """
-    Hard-code a few Lean 4 snippets:
-      - 2 trivially correct theorems
-      - 1 obviously false theorem (2+2=5 by rfl) that should fail
-    We expect [True, True, False] if require_no_goals=True.
-    """
-    snippet1 = """theorem lemma_success1 : 1 = 1 := by
-rfl
-"""
-
-    snippet2 = """theoasfad rem lemma2 : 2 = 2 := by
-rf  l
-"""
-
-    # Contradictory snippet => leftover type error or partial => should fail
-    snippet3 = """theorem lemma_fail : 2 + 2 = 5 := by
-rfl
-"""
-
-    manual_snips = [snippet1, snippet2, snippet3]
-    results = [check_lean_compiles_strict(snip, server, require_no_goals=True) for snip in manual_snips]
-
-    print("\n=== Manual snippet test ===")
-    for i, (snip, result) in enumerate(zip(manual_snips, results), start=1):
-        print(f"[Snippet {i}] compile success={result}")
-        print("Snippet:\n", snip)
-    print(f"results={results}")
-    print(f"Manual snippet success rate: {sum(results)}/{len(manual_snips)}")
-
-
+# ------------------------------------------------------------------------
+# Main
+# ------------------------------------------------------------------------
 def main() -> None:
     """
-    1) Seeds RNG
-    2) Creates Pantograph Server
-    3) Tests manual snippets for partial compile checks
-    4) Optionally tests a trivial pass@k with GPT-2
-
-    If snippet3 is STILL returning True, it likely means the Lean environment
-    isn't producing type errors or leftover goals for "2+2=5 => rfl".
-    You may need to adapt your Lean build or parse approach further.
+    Example script:
+      1) parse CLI args
+      2) set seed
+      3) create a Pantograph server
+      4) create a vLLM model from the user-provided path
+      5) run pass@k on a few toy Lean docstrings
     """
-    seed_everything(42)
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=True,
+        help="Path or name of your vLLM model. E.g. /path/to/gemma or hf:google/gemma-2-2b",
+    )
+    parser.add_argument("--k", type=int, default=5, help="top-k for pass@k")
+    parser.add_argument("--n", type=int, default=10, help="completions to sample per prompt")
+    parser.add_argument("--seed", type=int, default=42, help="global random seed")
+    args = parser.parse_args()
+
+    # 1) Seeding
+    seed_everything(args.seed)
+
+    # 2) Start Pantograph server
     server = Server()
 
-    # 1) Manual snippet test
-    test_manual_snippets(server)
+    # 3) Create vLLM model
+    print(f"Loading vLLM model from: {args.model}")
+    llm = LLM(
+        model=args.model,
+        trust_remote_code=True,
+        dtype="bfloat16",
+        download_dir="vllm_model_cache"  # Or your desired cache dir
+    )
 
-    # 2) GPT-2 pass@k test (toy)
+    # 4) sampling params
+    sampling_params = SamplingParams(
+        temperature=0.7,
+        top_p=0.95,
+        max_tokens=256,
+        n=args.n,
+    )
+
+    # 5) docstrings to test
     docstrings = [
         "theorem lemma1 : 2 + 1 = 1 + 2 := by",
         "theorem lemma2 : 2 + 2 = 2 + 2 := by",
     ]
-    # add some random junk
-    docstrings += [d + " randomjunk" for d in docstrings]
 
-    k = 20
-    num_samples = 200
-    score = run_pass_k_eval(docstrings, server, k=k, num_samples=num_samples)
-    print(f"\n==== Final Average Pass@{k} across {len(docstrings)} tasks: {score:.3f} ====\n")
+    # Evaluate pass@k
+    final_score = run_pass_k_eval_vllm(
+        prompts=docstrings,
+        server=server,
+        llm=llm,
+        sampling_params=sampling_params,
+        k=args.k,
+        n=args.n
+    )
 
+    print(f"\n=== Final Average Pass@{args.k} across {len(docstrings)} prompts: {final_score:.3f} ===")
 
 if __name__ == "__main__":
     main()

@@ -78,6 +78,33 @@ conda activate zip_fit
 pip install -e ~/ZIP-FIT
 ```
 
+## Install vLLM
+
+Best way Brando knows to install vllm is to install lm-harness:
+```bash
+# # [Optional] If you forget to do the git clone recursive submodules do this (or the submodule will be empty because you might have clonded the right project but checkout the wrong branch)
+# cd ~/putnam-axiom
+# git submodule update --init --recursive
+
+# # [OPTIONAL] Add the submodule [note: only do if not there already]
+# cd ~/putnam-axiom
+# git submodule add git@github.com:emxia18/lm-evaluation-harness.git lm-evaluation-harness
+# git submodule update --init --recursive
+# git add .gitmodules lm-evaluation-harness
+# # git commit -m "Added lm-evaluation-harness as a submodule"
+
+# #  Install lm-harness from submodule
+# cd ~/putnam-axiom/lm-evaluation-harness
+
+# Instead of the usual pip install lm_eval[vllm] lm-harness recommends, do the command bellow:
+pip install -e ".[vllm]"
+pip install antlr4-python3-runtime==4.11
+# to check installs worked do (versions and paths should appear)
+pip list | grep lm_eval
+pip list | grep vllm
+pip list | grep antlr4
+```
+
 ## Citation Information
 Paper: <https://arxiv.org/abs/2410.18194>
 ```
