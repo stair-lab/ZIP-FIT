@@ -78,32 +78,100 @@ conda activate zip_fit
 pip install -e ~/ZIP-FIT
 ```
 
-## Install vLLM
-
-Best way Brando knows to install vllm is to install lm-harness:
+Install vLLM (intalling it by installing lm-harness seems to work well with good flash attn):
 ```bash
-# # [Optional] If you forget to do the git clone recursive submodules do this (or the submodule will be empty because you might have clonded the right project but checkout the wrong branch)
-# cd ~/putnam-axiom
-# git submodule update --init --recursive
-
-# # [OPTIONAL] Add the submodule [note: only do if not there already]
-# cd ~/putnam-axiom
-# git submodule add git@github.com:emxia18/lm-evaluation-harness.git lm-evaluation-harness
-# git submodule update --init --recursive
-# git add .gitmodules lm-evaluation-harness
-# # git commit -m "Added lm-evaluation-harness as a submodule"
-
-# #  Install lm-harness from submodule
-# cd ~/putnam-axiom/lm-evaluation-harness
-
-# Instead of the usual pip install lm_eval[vllm] lm-harness recommends, do the command bellow:
-pip install -e ".[vllm]"
+# Install lm-harness (https://github.com/EleutherAI/lm-evaluation-harness)
+pip install lm_eval[vllm]
+# pip install -e ".[vllm]"
 pip install antlr4-python3-runtime==4.11
 # to check installs worked do (versions and paths should appear)
 pip list | grep lm_eval
 pip list | grep vllm
 pip list | grep antlr4
 ```
+
+Install Lean:
+```bash
+# install elan
+curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
+
+# Cat .bashrc to see if to change path for elan
+cat ~/.bashrc | grep .elan
+# if you don't see .elan then run the code bellow to add it to your .bashrc
+export PATH="$HOME/.elan/bin:$PATH"
+echo 'export PATH="$HOME/.elan/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# Test the installation
+elan --version
+lean --version
+lake --version
+```
+
+Install PyPantograph (our Python Interface to Lean 4):
+```bash
+git clone --recurse-submodules git@github.com:lenianiva/PyPantograph.git
+cd PyPantograph
+git submodule update --init --recursive
+```
+
+Install poetry: 
+```bash
+# Option1: instal poetry in your zip_fit
+# Instead of creating a separate Poetry venv (like the official Poetry docs often do), we’ll simply put Poetry in the zip_fit environment so that we never leave it.
+pip install poetry
+which poetry
+poetry --version
+
+# Option2: in a seperate Python env
+mkdir -p $HOME/.virtualenvs
+export VENV_PATH=$HOME/.virtualenvs/venv_for_poetry
+export PATH="$VENV_PATH/bin:$PATH"
+python3 -m venv $VENV_PATH
+$VENV_PATH/bin/pip install -U pip setuptools
+$VENV_PATH/bin/pip install poetry
+# Only if not in your .bashrc already
+bash
+echo 'export VENV_PATH=$HOME/.virtualenvs/venv_for_poetry' >> ~/.bashrc
+echo 'export PATH="$VENV_PATH/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+which poetry
+# You might need to kill your current bash session and restart it if suddenly your in the poetry env
+which python
+# if it's poetry then kill bash and start a new one and then reactivate zip_fit
+conda activate zip_fit
+```
+
+Install PyPantograph to current conda `zip_fit` env without breaking things:
+```bash
+cd PyPantograph
+# Configure Poetry to install to the current environment
+poetry config virtualenvs.create false
+# Now install PyPantograph
+poetry install
+
+# Confirm you are in zip_fit for sure
+which python
+
+# Show you install PyPantograph
+poetry show
+# or
+pip list | grep pantograph
+
+# Check PyPantograph works
+lean --version
+lake --version
+python -m pantograph.server
+
+# Make sure Zip fit dependencies work 
+cd ~/ZIP-FIT
+pip install -e .
+
+# Check zip-fit & pantograph
+python -c "import zip_fit; print('zip_fit is installed')"
+python -c "import pantograph; print('PyPantograph imported')"
+```
+ref: https://chatgpt.com/c/67996aa2-4d28-8001-a095-b54f4555676a
 
 ## Citation Information
 Paper: <https://arxiv.org/abs/2410.18194>
