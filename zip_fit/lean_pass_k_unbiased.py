@@ -2,8 +2,9 @@
 #!/usr/bin/env python3
 """
 Implements the unbiased Pass@k estimator from the Codex paper [Chen et al., 2021],
-plus a demonstration of using PyPantograph to generate Lean 4 code (via GPT-2)
-and evaluate how many snippets compile. We then compute Pass@k on these results.
+plus a demonstration of using PyPantograph to check Lean 4 code (theorems, etc.)
+for compilation correctness, including syntax/type errors that do not raise
+exceptions by default.
 
 References:
  - Official OpenAI HumanEval code, which uses the same binomial formula:
@@ -21,43 +22,57 @@ the unbiased pass@k is:
 Edge Cases:
  - If c = 0 => pass@k=0
  - If c >= n => pass@k=1
- - If (n - c) < k => pass@k=1 (can't fill all k picks with incorrect samples)
+ - If (n - c) < k => pass@k=1 (can't fill all k picks with incorrect)
 
-Implementation uses a product form for numerical stability:
+We use a product form for numerical stability:
   pass@k = 1 - ∏_{i=0 to k-1} [ (n-c-i) / (n-i) ]
 
 --------------------------------------------------------------------------------
-Lean 4 Use Case:
-~~~~~~~~~~~~~~~~
-We integrate with PyPantograph to:
-1. Prompt GPT-2 for Lean 4 code snippets (docstring => code).
-2. Check if each snippet compiles in Lean 4 via `server.load_sorry`.
-3. Count how many are correct (compilable).
-4. Compute pass@k with the unbiased formula.
+Why Checking Lean Code is Non-trivial:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PyPantograph's `server.load_sorry(...)` does *not* throw an exception for every
+syntactic or type error. This mimics Lean 4's design: partial errors typically
+become "messages" or "goals" within the same file.
 
-Prerequisites:
-  - Lean 4 + lake installed
-  - PyPantograph installed
-  - transformers & torch for GPT-2 generation
-  - numpy for pass@k combinatorial calculation
+Hence, if you pass an obviously wrong snippet like `theorem lemma : 2+2=5 := by rfl`,
+it may not raise an exception. Instead, we must:
+  1) Inspect the returned `CompilationUnit` objects
+  2) Look for leftover messages with "error" or unsolved goals
+  3) Decide that means a compilation failure
 
+Therefore, we do the checks explicitly:
+ - If `messages` from a compilation unit indicate an error, we fail.
+ - If `goal_state is not None`, that means Lean is left with a hole or sorry-based
+   partial proof. If we demand "fully proven," we consider that a fail (or you can
+   be more lenient if you only want syntax to pass).
+
+In short, we define `check_lean_compiles_strict` which:
+   1) calls `server.load_sorry(...)`
+   2) iterates over each `CompilationUnit` returned
+   3) if any unit's `.messages` mention errors, or if we want zero leftover goals,
+      we return `False`
+   4) Otherwise return `True` if no errors remain
+
+--------------------------------------------------------------------------------
 Usage:
-  1. Ensure the above prerequisites are installed.
-  2. Run: python lean_pass_k_unbiased.py
+  1) Ensure Lean, PyPantograph, transformers, torch, numpy installed
+  2) Run: python lean_pass_k_unbiased.py
 """
 
 import numpy as np
 from typing import List
 from transformers import pipeline, set_seed
 from pantograph.server import Server
+from pantograph.data import CompilationUnit, TacticInvocation
 
 
-def seed_everything(seed: int = 42):
+def seed_everything(seed: int = 42) -> None:
     """
     Seed Python, NumPy, and PyTorch for reproducibility.
     """
     import random
     import numpy as np
+    import torch
     from transformers import set_seed as hf_set_seed
 
     print(f"Setting random seed = {seed}")
@@ -78,19 +93,12 @@ def seed_everything(seed: int = 42):
 
 def pass_at_k(n: int, c: int, k: int) -> float:
     """
-    Compute the unbiased pass@k for a single problem using the
-    Codex/HumanEval approach.
+    Compute the unbiased pass@k for a single problem using the Codex/HumanEval approach.
 
-    pass@k = 1 - ((n - c choose k)/(n choose k))
-            = 1 - ∏_{i=0 to k-1}[(n-c-i)/(n-i)]
+    pass@k = 1 - ( (n - c choose k) / (n choose k) )
+            = 1 - ∏_{i=0 to k-1} [(n-c-i)/(n-i)]
 
-    Args:
-        n (int): Total number of code snippets generated.
-        c (int): Number of correct (compilable) snippets.
-        k (int): "top-k" threshold.
-
-    Returns:
-        float: pass@k ∈ [0,1].
+    Edge-cases ensure we return 0 or 1 if c=0 or c >= n or (n-c)<k.
     """
     if c == 0:
         return 0.0
@@ -104,7 +112,6 @@ def pass_at_k(n: int, c: int, k: int) -> float:
         numerator = (n - c - i)
         denominator = (n - i)
         if numerator < 0:
-            # We can't fill these k picks with incorrect
             return 1.0
         product_term *= (numerator / denominator)
 
@@ -115,13 +122,8 @@ def generate_snippets(prompt: str, num_samples: int = 5, max_length: int = 64) -
     """
     Generates Lean 4 code snippets from a textual prompt using GPT-2 (toy example).
 
-    Args:
-        prompt (str): The user prompt or docstring.
-        num_samples (int): Number of completions to generate.
-        max_length (int): Max token length of each completion.
-
-    Returns:
-        List[str]: List of code snippet strings.
+    This is just for demonstration: GPT-2 is not trained on Lean, so it's
+    likely to produce nonsense in real usage. But it demonstrates the pipeline.
     """
     generator = pipeline("text-generation", model="gpt2")
     outputs = generator(
@@ -134,22 +136,46 @@ def generate_snippets(prompt: str, num_samples: int = 5, max_length: int = 64) -
     return [o["generated_text"] for o in outputs]
 
 
-def check_lean_compiles(snippet: str, server: Server) -> bool:
+def check_lean_compiles_strict(snippet: str, server: Server, require_no_goals: bool = True) -> bool:
     """
-    Checks if the given Lean 4 code snippet compiles via PyPantograph.
+    Checks if a snippet is valid Lean 4 code, *strictly*, by:
+      1) server.load_sorry(file=snippet) -> returns list[CompilationUnit]
+      2) For each CompilationUnit:
+         - If it has any `messages` containing "error", or
+         - If it has leftover goals (goal_state != None) and we require full proof => fail
+    If no errors or leftover goals, we declare success.
 
     Args:
-        snippet (str): Potential Lean 4 code snippet.
-        server (Server): PyPantograph server instance.
+        snippet: Lean 4 code snippet
+        server:  Pantograph Server
+        require_no_goals: if True, any leftover goals => fail
 
     Returns:
-        bool: True if snippet compiles successfully; else False.
+        bool: True if fully compiled with no leftover errors or goals
     """
     try:
-        server.load_sorry(snippet)
-        return True
+        units = server.load_sorry(snippet)
+        # If "error" in result => already raises ServerError, so we skip the except block
     except Exception:
+        # Hard parse error or something
         return False
+
+    # Now check each CompilationUnit for leftover messages or goals
+    for cu in units:
+        # If there's any "error" or "error:" mention in cu.messages => fail
+        for msg in cu.messages:
+            lower_msg = msg.lower()
+            # A typical check: if "error" is in the string => fail
+            if "error" in lower_msg:
+                return False
+
+        # If user wants no leftover goals, but .goal_state is not None => we see that as partial
+        if require_no_goals and cu.goal_state is not None:
+            # Means there's at least one sorry/hole or leftover type error, so fail
+            return False
+
+    # If we pass all checks => success
+    return True
 
 
 def run_pass_k_eval(
@@ -159,68 +185,86 @@ def run_pass_k_eval(
     num_samples: int = 10
 ) -> float:
     """
-    Runs pass@k evaluation over a list of "docstrings" (Lean 4 tasks).
-
-    Steps:
-      1) Generate 'num_samples' Lean code snippets via GPT-2 for each docstring.
-      2) Check how many snippets compile in Lean 4.
-      3) Compute pass@k for that docstring with pass_at_k(...).
-      4) Return the *average* pass@k across all docstrings.
-
-    Args:
-        docstrings (List[str]): The set of Lean tasks or docstrings.
-        server (Server): PyPantograph server instance for Lean 4 checks.
-        k (int): The top-k threshold for pass@k.
-        num_samples (int): # completions to generate per docstring.
-
-    Returns:
-        float: The average pass@k across all docstrings.
+    Evaluate pass@k for each docstring: generate code with GPT-2,
+    check how many compile under strict rules, then compute pass@k.
     """
-    pass_vals = []
+    pass_vals: List[float] = []
 
     for idx, statement in enumerate(docstrings):
-        # 1. Generate completions
+        # Generate completions
         completions = generate_snippets(prompt=statement, num_samples=num_samples)
-        # 2. Count how many compile
-        num_correct = sum(check_lean_compiles(c, server) for c in completions)
-        # 3. pass@k for this docstring
+        # Count how many are correct
+        num_correct = sum(check_lean_compiles_strict(c, server) for c in completions)
+        # Pass@k
         this_pass_k = pass_at_k(num_samples, num_correct, k)
         pass_vals.append(this_pass_k)
 
         print(f"\n[{idx+1}/{len(docstrings)}] Problem: {repr(statement)}")
         print(f"  #Generated={num_samples}, #Correct={num_correct}, pass@{k}={this_pass_k:.3f}")
 
-    # 4. Return average
     return float(np.mean(pass_vals)) if pass_vals else 0.0
+
+
+def test_manual_snippets(server: Server) -> None:
+    """
+    Hard-code a few Lean 4 snippets:
+      - 2 trivially correct theorems
+      - 1 obviously false theorem (2+2=5 by rfl) that should fail
+    We expect [True, True, False] if require_no_goals=True.
+    """
+    snippet1 = """theorem lemma_success1 : 1 = 1 := by
+rfl
+"""
+
+    snippet2 = """theoasfad rem lemma2 : 2 = 2 := by
+rf  l
+"""
+
+    # Contradictory snippet => leftover type error or partial => should fail
+    snippet3 = """theorem lemma_fail : 2 + 2 = 5 := by
+rfl
+"""
+
+    manual_snips = [snippet1, snippet2, snippet3]
+    results = [check_lean_compiles_strict(snip, server, require_no_goals=True) for snip in manual_snips]
+
+    print("\n=== Manual snippet test ===")
+    for i, (snip, result) in enumerate(zip(manual_snips, results), start=1):
+        print(f"[Snippet {i}] compile success={result}")
+        print("Snippet:\n", snip)
+    print(f"results={results}")
+    print(f"Manual snippet success rate: {sum(results)}/{len(manual_snips)}")
 
 
 def main() -> None:
     """
-    Demonstration:
-      - N=10 docstrings,
-      - k=5 => pass@5,
-      - num_samples=10 completions per docstring.
+    1) Seeds RNG
+    2) Creates Pantograph Server
+    3) Tests manual snippets for partial compile checks
+    4) Optionally tests a trivial pass@k with GPT-2
 
-    GPT-2 typically won't yield valid Lean code, but we illustrate the pipeline:
-      docstrings => generate_snippets => check_lean_compiles => pass_at_k => average pass@k
+    If snippet3 is STILL returning True, it likely means the Lean environment
+    isn't producing type errors or leftover goals for "2+2=5 => rfl".
+    You may need to adapt your Lean build or parse approach further.
     """
-    seed_everything(42)  # For reproducibility
-
-    # Create a default PyPantograph server to check Lean 4 code
+    seed_everything(42)
     server = Server()
 
-    # Example docstrings: toy "theorem" statements
+    # 1) Manual snippet test
+    test_manual_snippets(server)
+
+    # 2) GPT-2 pass@k test (toy)
     docstrings = [
-        f"theorem lemma{i} : 2 + {i} = {i} + 2 := by"
-        for i in range(1, 11)
+        "theorem lemma1 : 2 + 1 = 1 + 2 := by",
+        "theorem lemma2 : 2 + 2 = 2 + 2 := by",
     ]
+    # add some random junk
+    docstrings += [d + " randomjunk" for d in docstrings]
 
-    # Evaluate pass@5 with 10 completions per docstring
-    k = 5
-    num_samples = 10
-    avg_pass_k = run_pass_k_eval(docstrings, server, k=k, num_samples=num_samples)
-
-    print(f"\n==== Final Average Pass@{k} across N={len(docstrings)} tasks: {avg_pass_k:.3f} ====\n")
+    k = 20
+    num_samples = 200
+    score = run_pass_k_eval(docstrings, server, k=k, num_samples=num_samples)
+    print(f"\n==== Final Average Pass@{k} across {len(docstrings)} tasks: {score:.3f} ====\n")
 
 
 if __name__ == "__main__":
