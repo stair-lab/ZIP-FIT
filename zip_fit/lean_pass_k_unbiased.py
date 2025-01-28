@@ -413,7 +413,7 @@ def main() -> None:
     You may need to adapt your Lean build or parse approach further.
     """
     seed_everything(42)
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'  # choose GPU
+    os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # choose GPU
     server = Server()
 
     # 1) Manual snippet test
