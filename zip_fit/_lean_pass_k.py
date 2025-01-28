@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Filename: lean_pass_k.py
+# Filename: _lean_pass_k.py
 
 """
 Demonstration of Pass @ k for Lean 4 compilation using PyPantograph and GPT-2.
