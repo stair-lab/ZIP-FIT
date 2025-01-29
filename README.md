@@ -72,6 +72,8 @@ zip_fit_instance.run()
 You can specify different compression algorithms. The ZIP-FIT paper uses gzip, however other compression algorithms like lz4 are faster. 
 
 ## Dev Install
+ref: chat with install: https://chatgpt.com/share/67996e5c-9948-8001-bc44-9faed3fa3cf8
+
 ```bash
 conda create -n zip_fit python=3.11
 conda activate zip_fit
