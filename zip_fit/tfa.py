@@ -274,7 +274,7 @@ def main():
 
     global_start_time = time.time()  # Start overall timer
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '4'  # choose GPU
+    os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # choose GPU
     seed_everything()
 
     # 1) Load the ProofNet validation set

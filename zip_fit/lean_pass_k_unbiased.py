@@ -328,7 +328,6 @@ def run_pass_k_eval(
         model=model,                         # create vLLM model from path or HF name
         dtype=dtype,                         # specify float precision
         trust_remote_code=True,              # allow custom model code
-        download_dir=os.path.dirname(model)  # local directory to cache model
     )
     sampling_params = SamplingParams(
         temperature=temperature,# Controls randomness: higher values (e.g., 1.0) increase randomness; lower values (e.g., 0.1) make outputs more deterministic.
@@ -417,11 +416,29 @@ def main() -> None:
     server = Server()
 
     # 1) Manual snippet test
-    test_manual_snippets(server)
+    # test_manual_snippets(server)
     print()
 
-    # 2) Model pass@k test (toy)
-    model = 'gpt2'
+    # 2) Log In
+    from huggingface_hub import create_repo, upload_file, login, whoami
+    key_file_path = "~/keys/master_hf_token.txt"
+    key_file_path = os.path.abspath(os.path.expanduser(key_file_path))
+    with open(key_file_path, "r", encoding="utf-8") as f:
+        token = f.read().strip()
+    login(token=token)
+    os.environ['HUGGINGFACE_TOKEN'] = token
+    os.environ["HUGGING_FACE_HUB_TOKEN"] = token
+
+    user_info = whoami()
+    print(f"Currently logged in as: {user_info['name']}\n")
+
+    # 3) Model pass@k test (toy)
+    from huggingface_hub import create_repo, upload_file, whoami
+    whoami()
+    # model = 'gpt2'
+    # model = 'google/gemma-2-2b'
+    # model = 'UDACA/gemma-2-2b'
+    model = 'internlm/internlm2-math-plus-1_8b'
     docstrings = [
         "theorem lemma1 : 2 + 1 = 1 + 2 := by",
         "theorem lemma2 : 2 + 2 = 2 + 2 := by",
