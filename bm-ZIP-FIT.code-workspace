@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../putnam-axiom"
+		},
+		{
+			"path": "../PyPantograph"
 		}
 	],
 	"settings": {}

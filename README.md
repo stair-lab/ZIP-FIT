@@ -71,109 +71,226 @@ zip_fit_instance.run()
 ```
 You can specify different compression algorithms. The ZIP-FIT paper uses gzip, however other compression algorithms like lz4 are faster. 
 
-## Dev Install
-ref: chat with install: https://chatgpt.com/share/67996e5c-9948-8001-bc44-9faed3fa3cf8
+## Dev Install: ZIP-FIT + PyPantograph + Mathlib4 + Lean Setup
+Below are comprehensive instructions for setting up everything in a **conda** environment named `zip_fit`, ensuring that:
+
+- **Lean** is installed (via elan),
+- **PyPantograph** is installed (via Poetry) and matches the same Lean version,
+- **Mathlib4** is checked out at the corresponding Lean version,
+- **ZIP-FIT** and optional vLLM are also installed, all in one place.
+
+## 1. Create & Activate the `zip_fit` Conda Environment
 
 ```bash
 conda create -n zip_fit python=3.11
 conda activate zip_fit
+```
+
+### Install ZIP-FIT
+
+If you have the ZIP-FIT repo at `~/ZIP-FIT`, install it in editable mode:
+
+```bash
 pip install -e ~/ZIP-FIT
 ```
 
-Install vLLM (intalling it by installing lm-harness seems to work well with good flash attn):
+## 2. Install vLLM + EleutherAI Harness
+
+If you want vLLM for flash attention, you can install it via `lm_eval[vllm]`:
+
 ```bash
-# Install lm-harness (https://github.com/EleutherAI/lm-evaluation-harness)
 pip install lm_eval[vllm]
-# pip install -e ".[vllm]"
+# If you find version issues, pin it:
+pip install vllm==0.6.4.post1
+
 pip install antlr4-python3-runtime==4.11
-# to check installs worked do (versions and paths should appear)
+
+# Quick check
 pip list | grep lm_eval
 pip list | grep vllm
 pip list | grep antlr4
 ```
 
-Install Lean:
+## 3. Install Lean (Via `elan`)
+
 ```bash
-# install elan
 curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
 
-# Cat .bashrc to see if to change path for elan
+# If ~/.bashrc doesn't have ~/.elan, add it:
 cat ~/.bashrc | grep .elan
-# if you don't see .elan then run the code bellow to add it to your .bashrc
+# If no output, do:
 export PATH="$HOME/.elan/bin:$PATH"
 echo 'export PATH="$HOME/.elan/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
-# Test the installation
+# Check versions
 elan --version
 lean --version
 lake --version
 ```
 
-Install PyPantograph (our Python Interface to Lean 4):
+**Note**: This sets up Lean for your user via elan, which will manage multiple Lean versions as needed.
+
+## 4. Clone & Prepare PyPantograph
+Note: **you need Lean4, Mathlib4 and PyPantograph/Pantograph to all agree on Lean version** eg **4.15.0** at the time of this writing.
+
 ```bash
 git clone --recurse-submodules git@github.com:lenianiva/PyPantograph.git
 cd PyPantograph
 git submodule update --init --recursive
 ```
 
-Install poetry: 
+### 4A. Ensure PyPantograph & Submodule Are Lean 4.15.0
+
+PyPantograph has a `src/` submodule that also pins a Lean version. Confirm it’s `4.15.0`:
+
 ```bash
-# Option1: instal poetry in your zip_fit
-# Instead of creating a separate Poetry venv (like the official Poetry docs often do), we’ll simply put Poetry in the zip_fit environment so that we never leave it.
+cat src/lean-toolchain
+# Expect: leanprover/lean4:v4.15.0
+```
+
+If it’s correct, proceed. If not, pull the latest or check out the branch that uses 4.15.0:
+
+```bash
+git pull
+git submodule update --init --recursive
+# Then re-check src/lean-toolchain
+cat src/lean-toolchain
+```
+
+## 5. Install Poetry
+
+### (Optional)
+
+We’ll install Poetry **inside** the `zip_fit` environment (so we don’t leave conda):
+
+```bash
 pip install poetry
 which poetry
 poetry --version
+```
+If you prefer a separate Python env just for Poetry, see the commented lines below, but typically you can keep it simple by installing Poetry in `zip_fit`.
 
-# Option2: in a seperate Python env
+#### Install Poetry in it's seperate python env outside your current env
+Remark: Installing Poetry in a separate Python environment prevents conflicts between Poetry’s dependencies and those of your Conda or project environments, ensuring a stable and isolated package management experience.
+
+5. Create a Separate Python Env Just for Poetry
+From any shell (you can leave zip_fit or open a new terminal):
+
+```bash
+Copy
 mkdir -p $HOME/.virtualenvs
 export VENV_PATH=$HOME/.virtualenvs/venv_for_poetry
 export PATH="$VENV_PATH/bin:$PATH"
+
 python3 -m venv $VENV_PATH
 $VENV_PATH/bin/pip install -U pip setuptools
 $VENV_PATH/bin/pip install poetry
-# Only if not in your .bashrc already
-bash
+
+# Make it permanent
 echo 'export VENV_PATH=$HOME/.virtualenvs/venv_for_poetry' >> ~/.bashrc
 echo 'export PATH="$VENV_PATH/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
-which poetry
-# You might need to kill your current bash session and restart it if suddenly your in the poetry env
-which python
-# if it's poetry then kill bash and start a new one and then reactivate zip_fit
-conda activate zip_fit
+```
+Note: After this, which poetry may show `$HOME/.virtualenvs/venv_for_poetry/bin/poetry`.
+If it hijacks your shell’s Python, you can open a new shell and re-activate zip_fit when needed.
+
+## 6. Install PyPantograph into `zip_fit`
+
+1. **Stay** in the `PyPantograph` folder (and in the `zip_fit` env).  
+2. **Configure Poetry** so it doesn’t create an extra venv:
+   ```bash
+   poetry config virtualenvs.create false
+   ```
+3. **Install**:
+   ```bash
+   poetry install
+   ```
+4. **Check** you’re still in `zip_fit`:
+   ```bash
+   which python
+   # Should be something like ~/miniconda/envs/zip_fit/bin/python
+   ```
+5. **Verify**:
+   ```bash
+   poetry show
+   # or
+   pip list | grep pantograph
+   ```
+
+## 7. Ensure Mathlib4 Matches Lean 4.15.0
+
+PyPantograph’s submodule is pinned to Lean 4.15.0. If you want to import `Mathlib` inside PyPantograph, your local Mathlib4 **must** be the same Lean version.
+
+1. **Clone or go to** your `mathlib4` folder:
+   ```bash
+   cd ~
+   git clone https://github.com/leanprover-community/mathlib4.git
+   cd mathlib4
+   ```
+2. **Check out** the branch for Lean 4.15.0:
+   ```bash
+   git fetch --all
+   git checkout releases/v4.15.0
+   cat lean-toolchain
+   # → leanprover/lean4:v4.15.0
+   ```
+3. ** Speed Up** with cache:
+   ```bash
+   lake exe cache get
+   ```
+   This fetches pre-built .olean files for that commit if they exist.
+
+4. (*optional*) If needed, do a **local build**:
+   ```bash
+   lake clean
+   rm -rf .lake/build
+   lake update
+   lake build
+   ```
+
+Now, Mathlib4 is on Lean 4.15.0, matching PyPantograph.
+
+## 8. Final Verification
+
+### 8A. Check Lean Versions
+
+```bash
+lean --version
+# Should say 4.15.0 if you're in a folder overridden by elan or if conda isn't overshadowing anything.
+
+cd ~/mathlib4
+cat lean-toolchain
+# → 4.15.0
+
+cd ~/PyPantograph/src
+cat lean-toolchain
+# → 4.15.0
 ```
 
-Install PyPantograph to current conda `zip_fit` env without breaking things:
+All must match for a successful import.
+
+### 8B. Minimal PyPantograph Test
+
 ```bash
-cd PyPantograph
-# Configure Poetry to install to the current environment
-poetry config virtualenvs.create false
-# Now install PyPantograph
-poetry install
+cd ~
+python -c "from pantograph import Server; \
+           s = Server(imports=['Mathlib'], project_path='~/mathlib4'); \
+           print('Pantograph server started!')"
+```
+- If you see **“Pantograph server started!”** and no “invalid header” errors, you’re good!
 
-# Confirm you are in zip_fit for sure
-which python
+## 9. (Optional) Re-check ZIP-FIT
 
-# Show you install PyPantograph
-poetry show
-# or
-pip list | grep pantograph
+Return to your ZIP-FIT repo:
 
-# Check PyPantograph works
-lean --version
-lake --version
-python -m pantograph.server
-
-# Make sure Zip fit dependencies work 
+```bash
 cd ~/ZIP-FIT
 pip install -e .
 
-# Check zip-fit & pantograph
-python -c "import zip_fit; print('zip_fit is installed')"
-python -c "import pantograph; print('PyPantograph imported')"
+python -c "import zip_fit; print('zip_fit imported successfully!')"
 ```
-ref: https://chatgpt.com/c/67996aa2-4d28-8001-a095-b54f4555676a
+ref, o1 pro:https://chatgpt.com/g/g-p-6789a51d52308191917d7bc04225a117-zip-fit/c/67996aa2-4d28-8001-a095-b54f4555676a?model=o1-pro
 
 ## Citation Information
 Paper: <https://arxiv.org/abs/2410.18194>

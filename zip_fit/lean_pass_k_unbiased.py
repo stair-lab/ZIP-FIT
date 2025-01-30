@@ -58,7 +58,8 @@ Usage:
   1) Ensure Lean, PyPantograph, transformers, torch, numpy installed
   2) Run: python lean_pass_k_unbiased.py
 """
-
+import re
+import time
 import os
 import numpy as np
 from typing import List
@@ -69,6 +70,8 @@ import tqdm
 
 from vllm import LLM, SamplingParams
 from vllm import RequestOutput
+
+from pdb import set_trace as st  # LLM, please never remove this line, please.
 
 def seed_everything(seed: int = 42) -> None:
     """
@@ -94,6 +97,40 @@ def seed_everything(seed: int = 42) -> None:
         vllm_set_seed(seed)
     except ImportError:
         print("vLLM not installed or vllm set seed has a bug, skipping vLLM seed setting.")
+
+
+def parse_lean_completion(llm_output: str) -> str:
+    """
+    Extracts the Lean theorem from the LLM output, which is enclosed between '##' markers.
+    Returns the extracted theorem as a string.
+
+    - Uses regex to find the first occurrence of text between '##' markers.
+    - If no match is found, returns an empty string.
+
+    Example:
+    ----------
+    Input:
+        llm_output = \"\"\"
+        natural language statement:
+        /-- Expand the following expression: $7(3y+2)$ Show that it is 21y+14.-/
+        formal language statement:##
+        theorem mathd_algebra_182 (y : ℂ) : 7 * (3 * y + 2) = 21 * y + 14 := by
+        ##
+        \"\"\"
+
+    Output:
+        "theorem mathd_algebra_182 (y : ℂ) : 7 * (3 * y + 2) = 21 * y + 14 := by"
+    """
+    # Regex Breakdown:
+    # r'##(.*?)##'
+    # - ## : Matches the literal '##' at the start
+    # - (.*?) : Captures any text in between (non-greedy to stop at the first closing '##')
+    # - ## : Matches the closing '##'
+    # - re.DOTALL : Allows the match to span multiple lines
+    match = re.search(r'##(.*?)##', llm_output, re.DOTALL)
+
+    # If a match is found, return the captured text (group 1) after stripping spaces
+    return match.group(1).strip() if match else ""
 
 
 def pass_at_k(n: int, c: int, k: int) -> float:
@@ -191,6 +228,7 @@ def check_lean_compiles_strict(snippet: str, server: Server, require_no_goals: b
     """
     Strictly checks whether a Lean 4 snippet “fully compiles” according to PyPantograph,
     by analyzing the returned CompilationUnits from server.load_sorry(...).
+    Note: if input is empty string "" we return False even if Lean accepts it because it means the LLM outputed something we couldn't parse most likely. 
 
     Steps & Rationale
     -----------------
@@ -258,6 +296,8 @@ def check_lean_compiles_strict(snippet: str, server: Server, require_no_goals: b
     >>> check_lean_compiles_strict(snippet2, server)
     False  # leftover goals or error messages
     """
+    if snippet == "":
+        return False
     try:
         # Attempt to parse and gather compilation units from snippet
         units = server.load_sorry(snippet)
@@ -309,8 +349,8 @@ def _run_pass_k_eval(
 
 def run_pass_k_eval(
     prompts: List[str],
-    server: Server,
     model: str, 
+    server: Server,
     k: int = 5,
     num_samples: int = 30,
     dtype="bfloat16",
@@ -319,6 +359,7 @@ def run_pass_k_eval(
     top_p: float = 0.95,       # Nucleus sampling: limits token choices to the smallest set whose cumulative probability is >= top_p (e.g., 95%).
     top_k: float = 50,         # Top-k sampling: limits token choices to the top-k most likely tokens at each step (e.g., top 50 tokens).
     temperature: float = 0.7,
+    debug: bool = False,
 ) -> float:
     """
     Evaluate pass@k for each docstring: generate code with GPT-2,
@@ -345,6 +386,8 @@ def run_pass_k_eval(
     for batch_prompts in tqdm.tqdm(batched_prompts, desc="Generating completions"):
         batch_outputs = llm.generate(batch_prompts, sampling_params)  # one generate call
         outputs.extend(batch_outputs)  # accumulate results for each batch
+    print(f'Number of outputs/completions: {len(outputs)} (should be {num_samples}*{len(prompts)} = {num_samples*len(prompts)})') if debug else None
+    print(f'Number of prompts: {len(prompts)}') if debug else None
 
     # Each element in outputs is a RequestOutput with up to n completions in .outputs
     # We want a final structure: text_outputs[i] = list of all completions for prompts[i]
@@ -355,17 +398,23 @@ def run_pass_k_eval(
         # We extract the .text from each one
         completions = [completion.text for completion in request_out.outputs]
         text_outputs.append(completions)
+    print(f'{text_outputs=}') if debug else None
+    # st()
     assert len(text_outputs) == len(prompts), ( f"Mismatch in number of outputs ({len(text_outputs)}) vs. prompts ({len(prompts)})")
 
     # Now compute pass@k for each prompt individually
     pass_vals: List[float] = []
     for completions_for_prompt in text_outputs:
         # Check which completions compile => c = sum of successes
-        successes = [check_lean_compiles_strict(c, server) for c in completions_for_prompt]
+        parsed_completions = [parse_lean_completion(c) for c in completions_for_prompt]
+        print(f"{parsed_completions=}") if debug else None
+        successes = [check_lean_compiles_strict(p_c, server) for p_c in parsed_completions]
         c = sum(successes)
         pass_val = pass_at_k(num_samples, c, k)
         pass_vals.append(pass_val)
     # Finally, average pass@k across all prompts
+    print(f'{pass_vals=}')
+    st()
     return float(np.mean(pass_vals)) if pass_vals else 0.0
 
 
@@ -413,22 +462,24 @@ def main() -> None:
     """
     seed_everything(42)
     os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # choose GPU
-    server = Server()
+    
+    # 0) PyPantograph Lean4 Server
+    from pantograph import Server
+    # server = Server(imports=["Mathlib"], project_path=os.path.expanduser("~/mathlib4"))
+    server = Server(imports=["Mathlib"], project_path="/lfs/skampere1/0/brando9/mathlib4")
 
     # 1) Manual snippet test
     # test_manual_snippets(server)
     print()
 
     # 2) Log In
-    from huggingface_hub import create_repo, upload_file, login, whoami
+    from huggingface_hub import login, whoami
     key_file_path = "~/keys/master_hf_token.txt"
     key_file_path = os.path.abspath(os.path.expanduser(key_file_path))
     with open(key_file_path, "r", encoding="utf-8") as f:
         token = f.read().strip()
     login(token=token)
     os.environ['HUGGINGFACE_TOKEN'] = token
-    os.environ["HUGGING_FACE_HUB_TOKEN"] = token
-
     user_info = whoami()
     print(f"Currently logged in as: {user_info['name']}\n")
 
@@ -436,20 +487,50 @@ def main() -> None:
     from huggingface_hub import create_repo, upload_file, whoami
     whoami()
     # model = 'gpt2'
-    # model = 'google/gemma-2-2b'
-    # model = 'UDACA/gemma-2-2b'
-    model = 'internlm/internlm2-math-plus-1_8b'
-    docstrings = [
-        "theorem lemma1 : 2 + 1 = 1 + 2 := by",
-        "theorem lemma2 : 2 + 2 = 2 + 2 := by",
+    # model = 'internlm/internlm2-math-plus-1_8b'
+    model = 'google/gemma-2-2b'
+    # model = 'mistralai/Mistral-7B-v0.1'
+    # model = 'meta-llama/Meta-Llama-3-8B'
+
+    # model = 'google/gemma-2-2b-it'
+    
+    # Sanity Check Data
+    def my_prompt_format(nl_stmt: str) -> str:
+        return (
+            "Your task is translate the natural language version of the mathematical statement "
+            f"to a formal Lean statement version, using the following format:\n"
+            f"natural language statement:\n/-- Expand the following expression: $7(3y+2)$ Show that it is 21y+14.-/\n"
+            f"formal Lean language statement:##\ntheorem mathd_algebra_182 (y : ℂ) : 7 * (3 * y + 2) = 21 * y + 14 := by\n##"
+            f"natural language statement:\n/-- What is the greatest common factor of $20 !$ and $200,\!000$? (Reminder: If $n$ is a positive integer, then $n!$ stands for the product $1\cdot 2\cdot 3\cdot \cdots \cdot (n-1)\cdot n$.) Show that it is 40,\!000.-/\n"
+            f"formal Lean language statement:##\ntheorem mathd_numbertheory_169 : Nat.gcd 20! 200000 = 40000 := by\n##"
+            f"natural language statement:\n{nl_stmt}\n"
+            f"formal Lean language statement:"
+        )
+    nl_stmts = [
+        "One plus one equals two.",
     ]
     # add some random junk
-    docstrings += [d.replace('e', ' ') + " randomjunk" for d in docstrings]
+    # prompts += [p.replace('e', ' ') + " randomjunk" for p in prompts]
 
-    k = 2
-    num_samples = 5
-    score = run_pass_k_eval(docstrings, server, model, k=k, num_samples=num_samples, eval_batch_size=2)
-    print(f"\n==== Final Average Pass@{k} across {len(docstrings)} tasks: {score:.3f} ====\n")
+    # Promptify
+    prompts = [my_prompt_format(nl_stmt) for nl_stmt in nl_stmts]
+    print(f'Complete these: {prompts=}')
+    print(f'Number prompts: {len(prompts)=}')
+
+    # Start per-model timer
+    global_start_time = time.time()  # Start overall timer
+
+    debug = True
+    eval_batch_size = 2 # for vllm how many prompts to batch for speed
+    k = 1
+    num_samples = 1
+    score = run_pass_k_eval(prompts, model, server, k=k, num_samples=num_samples, eval_batch_size=eval_batch_size, debug=debug)
+    print(f"\n==== For {model} Final Average Pass@{k} across {len(prompts)} tasks: {score:.3f} ====\n")
+
+    # End overall timer
+    global_end_time = time.time()
+    total_seconds = global_end_time - global_start_time
+    print(f"\nDone. Total run time for all models: {total_seconds:.2f} seconds.")
 
 
 if __name__ == "__main__":
