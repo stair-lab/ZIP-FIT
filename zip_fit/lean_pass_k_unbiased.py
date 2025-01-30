@@ -224,7 +224,7 @@ def generate_snippets_hf_pipeline(prompt: str, num_samples: int = 5, max_length:
     return [o["generated_text"] for o in outputs]
 
 
-def check_lean_compiles_strict(snippet: str, server: Server, require_no_goals: bool = True) -> bool:
+def check_lean_compiles_strict(lean_snippet: str, server: Server, require_no_goals: bool = True) -> bool:
     """
     Strictly checks whether a Lean 4 snippet “fully compiles” according to PyPantograph,
     by analyzing the returned CompilationUnits from server.load_sorry(...).
@@ -296,30 +296,30 @@ def check_lean_compiles_strict(snippet: str, server: Server, require_no_goals: b
     >>> check_lean_compiles_strict(snippet2, server)
     False  # leftover goals or error messages
     """
-    # assumes output of model was a wrong parse so no real valid lean was given
-    if snippet == "":
-        return False
-    try:
-        # Attempt to parse and gather compilation units from snippet
-        units = server.load_sorry(snippet)
-    except Exception:
-        # If the server threw an exception, it's likely a parse or fatal error
+    # If snippet is empty, we consider it invalid => return False
+    if not lean_snippet.strip():
         return False
 
-    # Inspect each compilation unit for error messages or leftover goals
-    # print(f'{units=}')
-    # st()
-    for cu in units:
-        # If any message includes 'error', we fail immediately
-        for msg in cu.messages:
+    try:
+        # Executes the compiler on a Lean file. For each compilation unit, either
+        # return the gathered `sorry` s, or a list of messages indicating error.
+        compilation_units = server.load_sorry(lean_snippet)
+    except Exception:
+        # If the server raised an exception, it's likely a parse/fatal error => fail
+        return False
+
+    # Check each compilation unit for error messages or leftover goals
+    for compilation_unit in compilation_units:
+        # If any message includes 'error', we consider it a compile failure
+        for msg in compilation_unit.messages:
             if 'error' in msg.lower():
                 return False
 
-        # If we require no leftover goals, check if goal_state is present
-        if require_no_goals and cu.goal_state is not None:
+        # If user demands no leftover goals, check if any goals remain
+        if require_no_goals and (compilation_unit.goal_state is not None):
             return False
 
-    # If we get here, no blocking errors or leftover goals => success
+    # If we reach here, no errors and (optionally) no leftover goals => success
     return True
 
 
@@ -464,7 +464,7 @@ def main() -> None:
     You may need to adapt your Lean build or parse approach further.
     """
     seed_everything(42)
-    os.environ['CUDA_VISIBLE_DEVICES'] = '2'  # choose GPU
+    os.environ['CUDA_VISIBLE_DEVICES'] = '7'  # choose GPU
     
     # 0) PyPantograph Lean4 Server
     from pantograph import Server
@@ -492,6 +492,8 @@ def main() -> None:
     # model = 'gpt2'
     # model = 'internlm/internlm2-math-plus-1_8b'
     model = 'google/gemma-2-2b'
+    # model = 'UDACA/math-gemma-2-2b-zipfit'
+    # model = 'UDACA/math-gemma-2-2b-dsir'
     # model = 'mistralai/Mistral-7B-v0.1'
     # model = 'meta-llama/Meta-Llama-3-8B'
 

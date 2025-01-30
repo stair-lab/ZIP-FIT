@@ -1,23 +1,5 @@
 # zip_fit/train/train.py
 
-import os
-import time
-import random
-import torch
-from typing import Optional, Callable
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    PreTrainedModel,
-    TrainerCallback,
-    TrainerState,
-    TrainerControl
-)
-from datasets import load_dataset, Dataset
-import wandb
-
-from tfa import TfaCallback
-
 def seed_everything(seed: int = 42):
     """
     Seed Python, NumPy, and PyTorch for reproducibility.
@@ -25,6 +7,7 @@ def seed_everything(seed: int = 42):
     import random
     import numpy as np
     from transformers import set_seed as hf_set_seed
+    import torch
 
     print(f"Setting random seed = {seed}")
     random.seed(seed)
@@ -35,17 +18,39 @@ def seed_everything(seed: int = 42):
         torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
     if torch.cuda.is_available():
         hf_set_seed(seed)
     else:
         print("Warning: Transformers is only fully deterministic on GPU")
+    try:
+        from vllm import set_seed as vllm_set_seed
+        vllm_set_seed(seed)
+    except ImportError:
+        print("vLLM not installed or vllm set seed has a bug, skipping vLLM seed setting.")
 
 
 
 def minimal_trainer(config: dict = {}):
     from transformers import TrainingArguments, Trainer
     from pathlib import Path
+    import datetime
+    import os
+    import time
+    import random
+    import torch
+    from typing import Optional, Callable
+    from transformers import (
+        AutoTokenizer,
+        AutoModelForCausalLM,
+        PreTrainedModel,
+        TrainerCallback,
+        TrainerState,
+        TrainerControl
+    )
+    from datasets import load_dataset, Dataset
+    import wandb
+
+    from tfa import TfaCallback
 
     os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # choose GPU
 
@@ -60,11 +65,11 @@ def minimal_trainer(config: dict = {}):
     tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
 
     # 3) Prepare dataset
-    def my_prompt_format(nl_stmt: str) -> str:
-        return (
-            "Translate the natural language version of the mathematical statement "
-            f"to a formal Lean version:\n{nl_stmt}\n"
-        )
+    # def my_prompt_format(nl_stmt: str) -> str:
+    #     return (
+    #         "Translate the natural language version of the mathematical statement "
+    #         f"to a formal Lean version:\n{nl_stmt}\n"
+    #     )
     def my_prompt_format(nl_stmt: str) -> str:
         # format iddah used for less: https://huggingface.co/datasets/AI4M/less-proofnet-lean4-top1M/viewer/default/train?row=0 
         return f'informal statement {nl_stmt}'
@@ -73,24 +78,21 @@ def minimal_trainer(config: dict = {}):
     ds_train = ds_train.with_format('torch')  
     ds_train = ds_train.map(
         lambda example: {
-            'text': my_prompt_format(example['nl_statement']) 
-                     + example['formal_statement'] 
+            'text': my_prompt_format(example['text']) 
                      + tokenizer.eos_token
         },
         num_proc=24
     )
-
     def tokenize_function(examples):
         # We create 'input_ids', 'attention_mask' and 'labels' = 'input_ids'
         tokenized = tokenizer(
             examples["text"], 
             padding='max_length', 
-            max_length=300, 
+            max_length=512, 
             truncation=True
         )
         tokenized["labels"] = tokenized["input_ids"].copy()
         return tokenized
-
     ds_train = ds_train.map(
         tokenize_function, 
         batched=True, 
@@ -100,14 +102,15 @@ def minimal_trainer(config: dict = {}):
 
     ds_eval = ds_eval.map(
         lambda ex: {
-            'prompt': my_prompt_format(ex['nl_statement']), 
+            'prompt': my_prompt_format(ex['informal_prefix']), 
             'gold_response': ex['formal_statement']
         },
         num_proc=24
     )
 
     # 4) Minimal training args: run for 1 step, do evaluation at the same step.
-    output_dir = Path('~/data/zipfit_less_runs/tfa_output').expanduser()
+    today: str = datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss')
+    output_dir = Path(f'~/data/zipfit_less_runs/tfa_output_{today}').expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
     training_args = TrainingArguments(
         output_dir=output_dir,
@@ -139,12 +142,11 @@ def minimal_trainer(config: dict = {}):
         # # -- scheduler
         # lr_scheduler_type=config.get('lr_scheduler_type', 'constant'), # this is the hf default btw
         lr_scheduler_type=config.get('lr_scheduler_type', 'constant_with_warmup'), # this is the hf default btw
-        # warmup_ratio=config.get('warmup_ratio', 0.0), 
+        warmup_ratio=config.get('warmup_ratio', 0.05), 
         # # -- seed
-        # seed=config.get('seed', 0),
-        # data_seed=config.get('data_seed', config.get('seed', 0)),
+        seed=config.get('seed', 42),
+        data_seed=config.get('data_seed', config.get('seed', 42)),
         torch_compile=True,
-
     )
 
     # 5) Attach TfaCallback
