@@ -296,6 +296,7 @@ def check_lean_compiles_strict(snippet: str, server: Server, require_no_goals: b
     >>> check_lean_compiles_strict(snippet2, server)
     False  # leftover goals or error messages
     """
+    # assumes output of model was a wrong parse so no real valid lean was given
     if snippet == "":
         return False
     try:
@@ -306,6 +307,8 @@ def check_lean_compiles_strict(snippet: str, server: Server, require_no_goals: b
         return False
 
     # Inspect each compilation unit for error messages or leftover goals
+    # print(f'{units=}')
+    # st()
     for cu in units:
         # If any message includes 'error', we fail immediately
         for msg in cu.messages:
@@ -413,8 +416,8 @@ def run_pass_k_eval(
         pass_val = pass_at_k(num_samples, c, k)
         pass_vals.append(pass_val)
     # Finally, average pass@k across all prompts
-    print(f'{pass_vals=}')
-    st()
+    print(f'{pass_vals=}') if debug else None
+    # st()
     return float(np.mean(pass_vals)) if pass_vals else 0.0
 
 
