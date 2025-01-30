@@ -4,6 +4,7 @@ import os
 import time
 import random
 import torch
+from torch.utils.data import Dataset as TorchDataset
 from typing import Optional, Callable
 from transformers import (
     AutoTokenizer,
@@ -15,6 +16,35 @@ from transformers import (
 )
 from datasets import load_dataset, Dataset
 import wandb
+from itertools import chain
+
+
+def create_blocks(text_data, tokenizer, block_size):
+    """Create blocks of tokens from text data."""
+    # Tokenize the text data and concatenate all tokens into a single list
+    concatenated_tokens = list(chain(*[tokenizer(text)['input_ids'] for text in text_data]))
+
+    # Calculate the total length of concatenated tokens and round down to the nearest multiple of block_size
+    total_length = len(concatenated_tokens)
+    total_length = (total_length // block_size) * block_size
+
+    # Split concatenated tokens into blocks of size block_size
+    all_tokens = [concatenated_tokens[i: i + block_size] for i in range(0, total_length, block_size)]
+    return all_tokens
+
+class CustomDataset(TorchDataset):
+    def __init__(self, tokenized_blocks):
+        self.input_ids = tokenized_blocks
+        self.labels = tokenized_blocks
+
+    def __len__(self):
+        return len(self.input_ids)
+
+    def __getitem__(self, idx):
+        return {
+            'input_ids': torch.tensor(self.input_ids[idx], dtype=torch.long),
+            'labels': torch.tensor(self.labels[idx], dtype=torch.long)
+        }
 
 def seed_everything(seed: int = 42):
     """
@@ -384,51 +414,19 @@ def minimal_tfa_trainer_test():
     # 2. Load and prepare training data (zipfit-TOP1M-AF)
     print("Loading training data...")
     ds_train = load_dataset("AI4M/zipfit-TOP1M-AF", split="train", token=hf_token)
-    ds_train = ds_train.with_format('torch')  
     
-    def tokenize_function(examples):
-        # Concatenate all texts in batch
-        concatenated = tokenizer.eos_token.join(examples["text"])
-        
-        # Tokenize whole text
-        tokenized = tokenizer(
-            concatenated,
-            truncation=False,
-            add_special_tokens=False
-        )
-        
-        # Split into chunks of block_size=1024
-        block_size = 1024
-        total_length = len(tokenized["input_ids"])
-        result = {
-            "input_ids": [tokenized["input_ids"][i:i+block_size] 
-                        for i in range(0, total_length, block_size)],
-            "attention_mask": [tokenized["attention_mask"][i:i+block_size]
-                            for i in range(0, total_length, block_size)],
-        }
-        
-        # Create labels (same as input_ids for causal LM)
-        result["labels"] = result["input_ids"].copy()
-        return result    # Tokenization function for training data
-    """    
-    def tokenize_function(examples):
-        # We create 'input_ids', 'attention_mask' and 'labels' = 'input_ids'
-        tokenized = tokenizer(
-            examples["text"], 
-            padding='max_length', 
-            max_length=1024, 
-            truncation=True
-        )
-        tokenized["labels"] = tokenized["input_ids"].copy()
-        return tokenized"""
-        
-    print("Tokenizing training data...")
-    ds_train = ds_train.map(
-        tokenize_function, 
-        batched=True,
-        remove_columns=ds_train.column_names,
-        num_proc=24
-    )
+    # Create blocks and custom dataset
+    block_size = 1024  # or whatever size you prefer
+    sequences = ds_train['text']
+    tokenized_blocks = create_blocks(sequences, tokenizer, block_size)
+    ds_train = CustomDataset(tokenized_blocks)
+
+
+    # Check if dataset is empty
+    if len(ds_train) == 0:
+        raise ValueError("Training dataset is empty after tokenization. Check your tokenize_function.")
+
+    print(f"Processed training dataset size: {len(ds_train)}")
 
     # 3. Load and prepare evaluation data (proofnet-lean4 test set)
     print("Loading evaluation data...")
@@ -465,7 +463,7 @@ def minimal_tfa_trainer_test():
         save_strategy="no",
         save_total_limit=0,
         seed=42,
-        torch_compile=True,
+        torch_compile=False,
         remove_unused_columns=False,
         do_eval=False,  # Disable built-in evaluation
     )
@@ -484,8 +482,7 @@ def minimal_tfa_trainer_test():
         model=model,
         args=training_args,
         train_dataset=ds_train,
-        eval_dataset=ds_eval,  
-        callbacks=[callback],
+        eval_dataset=ds_eval 
     )
 
     # 7. Start training
