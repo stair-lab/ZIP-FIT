@@ -62,7 +62,7 @@ import re
 import time
 import os
 import numpy as np
-from typing import List
+from typing import List, Optional
 from transformers import pipeline, set_seed
 from pantograph.server import Server
 from pantograph.data import CompilationUnit, TacticInvocation
@@ -130,7 +130,7 @@ def parse_lean_completion(llm_output: str) -> str:
     match = re.search(r'##(.*?)##', llm_output, re.DOTALL)
 
     # If a match is found, return the captured text (group 1) after stripping spaces
-    return match.group(1).strip() if match else ""
+    return match.group(1).strip() if match else "aslfasfj 134ljdf by := :="
 
 
 def pass_at_k(n: int, c: int, k: int) -> float:
@@ -323,6 +323,47 @@ def check_lean_compiles_strict(lean_snippet: str, server: Server, require_no_goa
     return True
 
 
+def get_list_lean4_syntax_errors(lean_snippet: str, server: Server, debug: bool = False) -> List[str]:
+    r"""
+    Check a Lean 4 code snippet for *parse/syntax errors* (ignore "unsolved goals").
+
+    Implementation:
+      - We call `server.load_sorry(lean_snippet)`, which compiles the snippet.
+      - For each message in the returned compilation units:
+        * If the line contains "error:" (case-insensitive is optional),
+          we check if it also has "unsolved goals" — if so, skip it, because
+          that's not a parse/lexical error.
+        * Otherwise, count it as a syntax error.
+
+    Returns the count of syntax/parse errors found.
+
+    Example
+    -------
+    >>> server = Server(imports=["Mathlib"], project_path="~/mathlib4")
+    >>> code = "theorem two_eq_two : 2 = 2 := by"  # incomplete
+    >>> num_errs = check_lean_compiles_syntax_only(server, code)
+    >>> print(num_errs)  # 1 or more
+    """
+    try:
+        compilation_units = server.load_sorry(lean_snippet)
+    except:
+        print(f'\n----{lean_snippet=}----\n') if debug else None
+        import traceback
+        traceback.print_exc() if debug else None
+        return [f'PyPantograph threw some exception: {traceback.format_exc()}']
+
+    syntax_errors: List[str] = []
+    for comp_unit in compilation_units:
+        for msg in comp_unit.messages:
+            # Quick check: if 'error:' is in the message, but not "unsolved goals"
+            # => it's likely a parse/lexical error.
+            # (In practice, we often see strings like "<anonymous>:1:5: error: ...")
+            if "error:" in msg and ("unsolved goals" not in msg.lower()):
+                syntax_errors.append(msg)
+
+    return syntax_errors
+
+
 def _run_pass_k_eval(
     docstrings: List[str],
     server: Server,
@@ -354,6 +395,7 @@ def run_pass_k_eval(
     prompts: List[str],
     model: str, 
     server: Server,
+    headers: Optional[List[str]] = None,  # If None, parse the headers from model generation
     k: int = 5,
     num_samples: int = 30,
     dtype="bfloat16",
@@ -368,55 +410,64 @@ def run_pass_k_eval(
     Evaluate pass@k for each docstring: generate code with GPT-2,
     check how many compile under strict rules, then compute pass@k.
     """
-    llm = LLM(
-        model=model,                         # create vLLM model from path or HF name
-        dtype=dtype,                         # specify float precision
-        trust_remote_code=True,              # allow custom model code
-    )
-    sampling_params = SamplingParams(
-        temperature=temperature,# Controls randomness: higher values (e.g., 1.0) increase randomness; lower values (e.g., 0.1) make outputs more deterministic.
-        top_p=top_p,            # Nucleus sampling: limits token choices to the smallest set whose cumulative probability is >= top_p (e.g., 95%).
-        top_k=top_k,            # Top-k sampling: limits token choices to the top-k most likely tokens at each step (e.g., top 50 tokens).
-        max_tokens=max_tokens,  # Maximum number of tokens (including prompt + generated tokens) for each completion.
-        n=num_samples,          # Number of completions to generate per prompt.
-    )
+    if model is not None:
+        llm = LLM(
+            model=model,                         # create vLLM model from path or HF name
+            dtype=dtype,                         # specify float precision
+            trust_remote_code=True,              # allow custom model code
+            seed=42,
+        )
+        sampling_params = SamplingParams(
+            temperature=temperature,# Controls randomness: higher values (e.g., 1.0) increase randomness; lower values (e.g., 0.1) make outputs more deterministic.
+            top_p=top_p,            # Nucleus sampling: limits token choices to the smallest set whose cumulative probability is >= top_p (e.g., 95%).
+            top_k=top_k,            # Top-k sampling: limits token choices to the top-k most likely tokens at each step (e.g., top 50 tokens).
+            max_tokens=max_tokens,  # Maximum number of tokens (including prompt + generated tokens) for each completion.
+            n=num_samples,          # Number of completions to generate per prompt.
+        )
 
-    # For each batch of prompts, call llm.generate for paralellization
-    batched_prompts = [prompts[i:i + eval_batch_size] for i in range(0, len(prompts), eval_batch_size)]
-    outputs: List[RequestOutput] = []
+        # For each batch of prompts, call llm.generate for paralellization
+        batched_prompts = [prompts[i:i + eval_batch_size] for i in range(0, len(prompts), eval_batch_size)]
+        print(f'Number of batches of prompts each of size {eval_batch_size}: {len(batched_prompts)}')
 
-    # For each batch of prompts, call llm.generate
-    for batch_prompts in tqdm.tqdm(batched_prompts, desc="Generating completions"):
-        batch_outputs = llm.generate(batch_prompts, sampling_params)  # one generate call
-        outputs.extend(batch_outputs)  # accumulate results for each batch
-    print(f'Number of outputs/completions: {len(outputs)} (should be {num_samples}*{len(prompts)} = {num_samples*len(prompts)})') if debug else None
-    print(f'Number of prompts: {len(prompts)}') if debug else None
+        # For each batch of prompts, call llm.generate
+        outputs: List[RequestOutput] = []
+        for batch_prompts in tqdm.tqdm(batched_prompts, desc="Generating completions"):
+            batch_outputs = llm.generate(batch_prompts, sampling_params)  # one generate call
+            outputs.extend(batch_outputs)  # accumulate results for each batch
+        print(f'Number of outputs/completions: {len(outputs)} (should be {num_samples}*{len(prompts)} = {num_samples*len(prompts)})') if debug else None
+        print(f'Number of prompts: {len(prompts)}') if debug else None
 
-    # Each element in outputs is a RequestOutput with up to n completions in .outputs
-    # We want a final structure: text_outputs[i] = list of all completions for prompts[i]
-    # So we gather them below:
-    text_outputs: List[List[str]] = []
-    for request_out in outputs:  
-        # request_out.outputs is a list of n completions
-        # We extract the .text from each one
-        completions = [completion.text for completion in request_out.outputs]
-        text_outputs.append(completions)
-    print(f'{text_outputs=}') if debug else None
-    # st()
-    assert len(text_outputs) == len(prompts), ( f"Mismatch in number of outputs ({len(text_outputs)}) vs. prompts ({len(prompts)})")
+        # Each element in outputs is a RequestOutput with up to n completions in .outputs
+        # We want a final structure: text_outputs[i] = list of all completions for prompts[i]
+        # So we gather them below:
+        text_outputs: List[List[str]] = []
+        for request_out in outputs:  
+            # request_out.outputs is a list of n completions
+            # We extract the .text from each one
+            completions = [completion.text for completion in request_out.outputs]
+            text_outputs.append(completions)
+        # print(f'{prompts=}') if debug else None
+        # print(f'{text_outputs=}') if debug else None
+        assert len(text_outputs) == len(prompts), ( f"Mismatch in number of outputs ({len(text_outputs)}) vs. prompts ({len(prompts)})")
+    else:
+        # If model is None, then the intention is to do pass @ k with the given list of strings
+        # For each prompt put it in a list as if it was the only completion produced by model
+        text_outputs: List[List[str]] = [[prompt] for prompt in prompts]
+        print(f'{text_outputs=}')
+        assert False
 
     # Now compute pass@k for each prompt individually
     pass_vals: List[float] = []
     for completions_for_prompt in text_outputs:
         # Check which completions compile => c = sum of successes
         parsed_completions = [parse_lean_completion(c) for c in completions_for_prompt]
-        print(f"{parsed_completions=}") if debug else None
-        successes = [check_lean_compiles_strict(p_c, server) for p_c in parsed_completions]
+        mdl_code_with_true_header = [f'{header}\n\n{parsed_comp}' for parsed_comp, header in zip(parsed_completions, headers)]
+        successes = [len(get_list_lean4_syntax_errors(lean_code, server)) == 0 for lean_code in mdl_code_with_true_header]
         c = sum(successes)
         pass_val = pass_at_k(num_samples, c, k)
         pass_vals.append(pass_val)
     # Finally, average pass@k across all prompts
-    print(f'{pass_vals=}') if debug else None
+    print(f'{len(pass_vals)=}') if debug else None
     # st()
     return float(np.mean(pass_vals)) if pass_vals else 0.0
 
@@ -452,7 +503,7 @@ rfl
     print(f"Manual snippet success rate: {sum(results)}/{len(manual_snips)}")
 
 
-def main() -> None:
+def main(config: dict = {}) -> None:
     """
     1) Seeds RNG
     2) Creates Pantograph Server
@@ -464,16 +515,19 @@ def main() -> None:
     You may need to adapt your Lean build or parse approach further.
     """
     seed_everything(42)
-    os.environ['CUDA_VISIBLE_DEVICES'] = '7'  # choose GPU
-
+    # export CUDA_VISIBLE_DEVICES=1; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    # export CUDA_VISIBLE_DEVICES=2; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    # export CUDA_VISIBLE_DEVICES=3; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    # export CUDA_VISIBLE_DEVICES=4; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    # export CUDA_VISIBLE_DEVICES=5; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    # export CUDA_VISIBLE_DEVICES=6; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    # export CUDA_VISIBLE_DEVICES=7; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    # os.environ['CUDAVISIBLE_DEVICES'] = '3'  # choose GPU
     # 0) PyPantograph Lean4 Server
     from pantograph import Server
-    # server = Server(imports=["Mathlib"], project_path=os.path.expanduser("~/mathlib4"))
-    server = Server(imports=["Mathlib"], project_path="/lfs/skampere1/0/brando9/mathlib4")
-
+    server = Server(imports=["Mathlib", "Init"], project_path=os.path.expanduser("~/mathlib4"))
     # 1) Manual snippet test
     # test_manual_snippets(server)
-    print()
 
     # 2) Log In
     from huggingface_hub import login, whoami
@@ -489,54 +543,94 @@ def main() -> None:
     # 3) Model pass@k test (toy)
     from huggingface_hub import create_repo, upload_file, whoami
     whoami()
-    # model = 'gpt2'
+    model = 'gpt2'
+    model = 'UDACA/math-gpt2-zipfit'
+    model = 'UDACA/math-gpt2-dsir'
+    model = 'UDACA/math-gpt2-less'
     # model = 'internlm/internlm2-math-plus-1_8b'
     model = 'google/gemma-2-2b'
-    # model = 'UDACA/math-gemma-2-2b-zipfit'
+    model = 'UDACA/math-gemma-2-2b-zipfit'
+    model = 'UDACA/math-gemma-2-2b-less'
     # model = 'UDACA/math-gemma-2-2b-dsir'
     # model = 'mistralai/Mistral-7B-v0.1'
     # model = 'meta-llama/Meta-Llama-3-8B'
-
     # model = 'google/gemma-2-2b-it'
-    
+    print(f'f{model=}') 
     # Sanity Check Data
+    # def my_prompt_format(nl_stmt: str) -> str:
+    #     return (
+    #         "Your task is translate the natural language version of the mathematical statement "
+    #         "to a formal Lean statement version, using the following format:\n"
+    #         "natural language statement:\nSuppose that $f$ is holomorphic in an open set $\Omega$. Prove that if $|f|$ is constant, then $f$ is constant.\n"
+    #         "formal Lean language statement:##\ntheorem exercise_1_13c {f : ℂ → ℂ} (Ω : Set ℂ) (a b : Ω) (h : IsOpen Ω) (hf : DifferentiableOn ℂ f Ω) (hc : ∃ (c : ℝ), ∀ z ∈ Ω, abs (f z) = c) : f a = f b:= sorry\n##"
+    #         "natural language statement:\nProve that the power series $\sum zn/n^2$ converges at every point of the unit circle.\n"
+    #         "formal Lean language statement:##\ntheorem exercise_1_19b (z : ℂ) (hz : abs z = 1) (s : ℕ → ℂ) (h : s = (λ n => ∑ i in (range n), i * z / i ^ 2)) : ∃ y, Tendsto s atTop (𝓝 y):= sorry\n##"
+    #         "natural language statement:\nSuppose $f$ is continuous in a region $\Omega$. Prove that any two primitives of $f$ (if they exist) differ by a constant.\n"
+    #         "formal Lean language statement:##\ntheorem exercise_1_26 (f F₁ F₂ : ℂ → ℂ) (Ω : Set ℂ) (h1 : IsOpen Ω) (h2 : IsConnected Ω) (hF₁ : DifferentiableOn ℂ F₁ Ω) (hF₂ : DifferentiableOn ℂ F₂ Ω) (hdF₁ : ∀ x ∈ Ω, deriv F₁ x = f x) (hdF₂ : ∀ x ∈ Ω, deriv F₂ x = f x) : ∃ c : ℂ, ∀ x, F₁ x = F₂ x + c:= sorry\n##"
+    #         f"natural language statement:\n{nl_stmt}\n"
+    #         "formal Lean language statement:"
+    #     )
     def my_prompt_format(nl_stmt: str) -> str:
         return (
             "Your task is translate the natural language version of the mathematical statement "
-            f"to a formal Lean statement version, using the following format:\n"
-            f"natural language statement:\n/-- Expand the following expression: $7(3y+2)$ Show that it is 21y+14.-/\n"
-            f"formal Lean language statement:##\ntheorem mathd_algebra_182 (y : ℂ) : 7 * (3 * y + 2) = 21 * y + 14 := by\n##"
-            f"natural language statement:\n/-- What is the greatest common factor of $20 !$ and $200,\!000$? (Reminder: If $n$ is a positive integer, then $n!$ stands for the product $1\cdot 2\cdot 3\cdot \cdots \cdot (n-1)\cdot n$.) Show that it is 40,\!000.-/\n"
-            f"formal Lean language statement:##\ntheorem mathd_numbertheory_169 : Nat.gcd 20! 200000 = 40000 := by\n##"
+            "to a formal Lean statement version, using the following format:\n"
+            "natural language statement:\nLet $z=\frac{1+i}{\sqrt{2}}.$What is $\left(z^{1^2}+z^{2^2}+z^{3^2}+\dots+z^{{12}^2}\right) \cdot \left(\frac{1}{z^{1^2}}+\frac{1}{z^{2^2}}+\frac{1}{z^{3^2}}+\dots+\frac{1}{z^{{12}^2}}\right)?$ $\textbf{(A) } 18 \qquad \textbf{(B) } 72-36\sqrt2 \qquad \textbf{(C) } 36 \qquad \textbf{(D) } 72 \qquad \textbf{(E) } 72+36\sqrt2$ Show that it is \textbf{(C) }36.\n"
+            "formal Lean language statement:##\ntheorem amc12a_2019_p21 (z : ℂ) (h₀ : z = (1 + Complex.I) / Real.sqrt 2) : (∑ k in Finset.Icc 1 12, (z^(k^2))) * (∑ k in Finset.Icc 1 12, (1 / z^(k^2))) = 36 := sorry\n##"
+            "natural language statement:\nIntegers $x$ and $y$ with $x>y>0$ satisfy $x+y+xy=80$. What is $x$? $ \textbf{(A)}\ 8 \qquad\textbf{(B)}\ 10 \qquad\textbf{(C)}\ 15 \qquad\textbf{(D)}\ 18 \qquad\textbf{(E)}\ 26$ Show that it is \textbf{(E)}\ 26.\n"
+            "formal Lean language statement:##\ntheorem amc12a_2015_p10 (x y : ℤ) (h₀ : 0 < y) (h₁ : y < x) (h₂ : x + y + (x * y) = 80) : x = 26 := sorry\n##"
+            "natural language statement:\nWhat is the [[volume]] of a [[cube]] whose [[surface area]] is twice that of a cube with volume 1? $\mathrm{(A)}\ \sqrt{2}\qquad\mathrm{(B)}\ 2\qquad\mathrm{(C)}\ 2\sqrt{2}\qquad\mathrm{(D)}\ 4\qquad\mathrm{(E)}\ 8$ Show that it is \mathrm{(C)}.\n"
+            "formal Lean language statement:##\ntheorem amc12a_2008_p8 (x y : ℝ) (h₀ : 0 < x ∧ 0 < y) (h₁ : y^3 = 1) (h₂ : 6 * x^2 = 2 * (6 * y^2)) : x^3 = 2 * Real.sqrt 2 := sorry\n##"
             f"natural language statement:\n{nl_stmt}\n"
-            f"formal Lean language statement:"
+            "formal Lean language statement:"
         )
-    nl_stmts = [
-        "One plus one equals two.",
-    ]
-    # add some random junk
-    # prompts += [p.replace('e', ' ') + " randomjunk" for p in prompts]
+    from datasets import load_dataset
+    ds_test = load_dataset('UDACA/proofnet-v3-lean4', split='test')
+    # ds_test = ds_test.select(list(range(10)))
 
-    # Promptify
-    prompts = [my_prompt_format(nl_stmt) for nl_stmt in nl_stmts]
-    print(f'Complete these: {prompts=}')
+    # Promptify & get Gold Truth Headers
+    prompts = [my_prompt_format(row['nl_statement']) for row in ds_test]
+    # model = None
+    # prompts = [f"##\n{row['formal_statement']}\n##" for row in ds_test]
+    # print(f'{prompts=}')
+    gold_headers = [row['header_no_import'] for row in ds_test]
+    # print(f'{gold_headers}=')
     print(f'Number prompts: {len(prompts)=}')
+    print(f'Number of gold headers: {len(gold_headers)=}')
 
     # Start per-model timer
     global_start_time = time.time()  # Start overall timer
 
     debug = True
-    eval_batch_size = 2 # for vllm how many prompts to batch for speed
-    k = 1
-    num_samples = 1
-    score = run_pass_k_eval(prompts, model, server, k=k, num_samples=num_samples, eval_batch_size=eval_batch_size, debug=debug)
-    print(f"\n==== For {model} Final Average Pass@{k} across {len(prompts)} tasks: {score:.3f} ====\n")
+    # debug = False
+    eval_batch_size = 32 # for vllm how many prompts to batch for speed
+    k = 5
+    # num_samples = 20
+    # num_samples = 40
+    num_samples = 5000
+    score = run_pass_k_eval(prompts, model, server, headers=gold_headers, k=k, num_samples=num_samples, eval_batch_size=eval_batch_size, debug=debug)
+    print(f"\n==== For {model} Final Average Pass@{k=}N={num_samples} across {len(prompts)} tasks: {score:.3f} ====\n")
 
     # End overall timer
     global_end_time = time.time()
     total_seconds = global_end_time - global_start_time
-    print(f"\nDone. Total run time for all models: {total_seconds:.2f} seconds.")
+    print(f"\nDone. Total run time for all models: {total_seconds:.2f} seconds.\a")
 
+def _main(**kwargs):
+    from datetime import datetime
+    from socket import gethostname
+    import wandb
+    today = datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss') # eg '2024_m01_d22_t13h_00m_30s'
+    # os.environ['CUDA_VISIBLE_DEVICES'] = str(kwargs.get('CUDA_VISIBLE_DEVICES', '7'))
+    tmux_sess_num = None
+    kwargs = kwargs | {'today': today, 'tmux_sess_num': tmux_sess_num, 'hostname': gethostname()}
+    run_name = f'{kwargs}' 
+    run = wandb.init(mode=kwargs.get('mode', 'online'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
+    wandb.save(__file__) # save current code now, don't wait to wandb.finish, also useful: wandb.save("*.py") # upload all .py files in current directory
+    print(f'Kwargs to run:\n{kwargs}')
+    main(kwargs)
+    run.alert(title="Run Completed", text=f"Run finished, run url: {run.get_url()}")
+    print(f'{run.get_url()=}')
+    wandb.finish()
 
 if __name__ == "__main__":
-    main()
+    _main()
