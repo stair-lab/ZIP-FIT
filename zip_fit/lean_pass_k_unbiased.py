@@ -465,7 +465,7 @@ def main() -> None:
     """
     seed_everything(42)
     os.environ['CUDA_VISIBLE_DEVICES'] = '7'  # choose GPU
-    
+
     # 0) PyPantograph Lean4 Server
     from pantograph import Server
     # server = Server(imports=["Mathlib"], project_path=os.path.expanduser("~/mathlib4"))
