@@ -84,6 +84,7 @@ Below are comprehensive instructions for setting up everything in a **conda** en
 ```bash
 conda create -n zip_fit python=3.11
 conda activate zip_fit
+conda activate zip_fit
 ```
 
 ### Install ZIP-FIT
@@ -91,6 +92,11 @@ conda activate zip_fit
 If you have the ZIP-FIT repo at `~/ZIP-FIT`, install it in editable mode:
 
 ```bash
+git clone git@github.com:stair-lab/ZIP-FIT.git
+cd ZIP-FIT
+git checkout -b bm_dev
+git branch -vv
+
 pip install -e ~/ZIP-FIT
 ```
 
@@ -178,7 +184,6 @@ Remark: Installing Poetry in a separate Python environment prevents conflicts be
 From any shell (you can leave zip_fit or open a new terminal):
 
 ```bash
-Copy
 mkdir -p $HOME/.virtualenvs
 export VENV_PATH=$HOME/.virtualenvs/venv_for_poetry
 export PATH="$VENV_PATH/bin:$PATH"
@@ -187,7 +192,10 @@ python3 -m venv $VENV_PATH
 $VENV_PATH/bin/pip install -U pip setuptools
 $VENV_PATH/bin/pip install poetry
 
+poetry
+
 # Make it permanent
+cat ~/.bashrc | grep poetry
 echo 'export VENV_PATH=$HOME/.virtualenvs/venv_for_poetry' >> ~/.bashrc
 echo 'export PATH="$VENV_PATH/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
@@ -197,13 +205,14 @@ If it hijacks your shell’s Python, you can open a new shell and re-activate zi
 
 ## 6. Install PyPantograph into `zip_fit`
 
-1. **Stay** in the `PyPantograph` folder (and in the `zip_fit` env).  
+1. **Stay** in the [`PyPantograph](https://github.com/stanford-centaur/PyPantograph)` folder (and in the `zip_fit` env).  
 2. **Configure Poetry** so it doesn’t create an extra venv:
    ```bash
    poetry config virtualenvs.create false
    ```
 3. **Install**:
    ```bash
+   poetry build
    poetry install
    ```
 4. **Check** you’re still in `zip_fit`:
