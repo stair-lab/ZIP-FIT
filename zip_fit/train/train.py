@@ -28,9 +28,6 @@ def seed_everything(seed: int = 42):
     except ImportError:
         print("vLLM not installed or vllm set seed has a bug, skipping vLLM seed setting.")
 
-
-from itertools import chain  # Import chain from the itertools module.
-
 from itertools import chain  # Import chain from the itertools module.
 
 def create_blocks(text_data, tokenizer, block_size):
@@ -128,17 +125,17 @@ def main_train(config: dict = {}):
 
     os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # choose GPU
 
-    # 1) Basic seeding
+    # Basic seeding
     seed_everything(42)
 
-    # 2) Load a small model (e.g. GPT-2).
+    # Load a small model (e.g. GPT-2).
     # model_name = "gpt2"
     model_name = "google/gemma-2-2b"
     model = AutoModelForCausalLM.from_pretrained(model_name)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
 
-    # 3) Prepare dataset
+    # Prepare dataset
     # def my_prompt_format(nl_stmt: str) -> str:
     #     return (
     #         "Translate the natural language version of the mathematical statement "
@@ -147,32 +144,11 @@ def main_train(config: dict = {}):
     def my_prompt_format(nl_stmt: str) -> str:
         # format iddah used for less: https://huggingface.co/datasets/AI4M/less-proofnet-lean4-top1M/viewer/default/train?row=0 
         return f'informal statement {nl_stmt}'
-    ds_train = load_dataset("AI4M/less-proofnet-lean4-top1M", split="validation")
-    # ds_train = load_dataset("UDACA/proofnet-lean4", split="validation")
-    ds_train = ds_train.with_format('torch')  
-    ds_train = ds_train.map(
-        lambda example: {
-            'text': my_prompt_format(example['text']) 
-                     + tokenizer.eos_token
-        },
-        num_proc=24
-    )
-    def tokenize_function(examples):
-        # We create 'input_ids', 'attention_mask' and 'labels' = 'input_ids'
-        tokenized = tokenizer(
-            examples["text"], 
-            padding='max_length', 
-            max_length=512, 
-            truncation=True
-        )
-        tokenized["labels"] = tokenized["input_ids"].copy()
-        return tokenized
-    ds_train = ds_train.map(
-        tokenize_function, 
-        batched=True, 
-        remove_columns=ds_train.column_names, 
-        num_proc=24
-    )
+    # ds_train = load_dataset("UDACA/proofnet-v3-lean4", split="validation")
+    ds_train = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
+    # ds_train = ds_train.map(to_text, num_procs=24) # converts to "text" if needed for next promptify depending on the fields of the ds
+    ds_train = ds_train.map(lambda eg: {"text": my_prompt_format(eg["nl_statement"]) + eg["formal_statement"]}, num_proc=24)
+    
 
     ds_eval = ds_eval.map(
         lambda ex: {
