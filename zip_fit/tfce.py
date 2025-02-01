@@ -58,7 +58,7 @@ def seed_everything(seed: int = 42):
         print("Warning: Transformers is only fully deterministic on GPU")
 
 
-def loss_full_gold_ref(
+def tfce_loss_full_gold_ref(
     prompt: str,
     gold_response: str,
     model: PreTrainedModel,
@@ -157,7 +157,7 @@ def compute_tfce_for_subds(
     """
     Process an entire subset of data (sub_ds) and compute the average TFCE across all examples.
 
-    For each example, we do `loss_full_gold_ref(...)`. We average over examples.
+    For each example, we do `tfce_loss_full_gold_ref(...)`. We average over examples.
 
     sub_ds[i] must have 'prompt' and 'gold_response'.
     If `debug=True`, we print each example's cross-entropy.
@@ -169,7 +169,7 @@ def compute_tfce_for_subds(
         prompt = example["prompt"]
         gold_response = example["gold_response"]
 
-        loss_i = loss_full_gold_ref(
+        loss_i = tfce_loss_full_gold_ref(
             prompt=prompt,
             gold_response=gold_response,
             model=model,
@@ -193,7 +193,7 @@ class TfceCallback(TrainerCallback):
       - on_evaluate    => up to n_during samples
       - on_train_end   => up to n_end samples (or entire set if n_end == -1)
     
-    Very similar to TfaCallback but uses cross-entropy (loss_full_gold_ref).
+    Very similar to TfaCallback but uses cross-entropy (tfce_loss_full_gold_ref).
     """
 
     def __init__(
@@ -203,7 +203,6 @@ class TfceCallback(TrainerCallback):
         n_begin: int = -1,
         n_during: int = 2,
         n_end: int = -1,
-        device: str = "cuda",
         reduction: str = "mean"
     ):
         """
@@ -386,7 +385,7 @@ def minimal_tfce_trainer_test():
         )
 
     ds_train = load_dataset("hoskinson-center/proofnet", split="test")
-    # ds_train = load_dataset("hoskinson-center/proofnet", split="validation")
+    ds_train = load_dataset("hoskinson-center/proofnet", split="validation")
     ds_train = ds_train.map(lambda eg: {
         "text": my_prompt_format(eg["nl_statement"])
                  + eg["formal_statement"]

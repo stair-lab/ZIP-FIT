@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../PyPantograph"
+		},
+		{
+			"path": "../data-quality-alignment-sft-af"
 		}
 	],
 	"settings": {}

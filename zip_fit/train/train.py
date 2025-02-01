@@ -1,5 +1,11 @@
 # zip_fit/train/train.py
 
+from typing import List, Optional, Dict
+
+from transformers import (
+    AutoTokenizer,
+)
+
 def seed_everything(seed: int = 42):
     """
     Seed Python, NumPy, and PyTorch for reproducibility.
@@ -28,124 +34,159 @@ def seed_everything(seed: int = 42):
     except ImportError:
         print("vLLM not installed or vllm set seed has a bug, skipping vLLM seed setting.")
 
-from itertools import chain  # Import chain from the itertools module.
 
-from typing import List, Any, Optional
-from itertools import chain
-
-def create_blocks(text_data: List[str], tokenizer: Any, block_size: int) -> List[List[int]]:
+def tokenize_and_group_texts_via_blocks(
+    examples: Dict[str, List[str]],  # since Batched=True gives a list of strings, note: a block size will be 1 sequences, a concat of tokenized rows from the data set! 
+    tokenizer: AutoTokenizer,
+    block_size: int,
+) -> Dict[str, List[List[int]]]:
     """
-    Tokenize input text data and split the tokens into fixed-size blocks.
+    Tokenizes a batch of raw text examples and groups the tokens into fixed-size blocks.
 
-    This function performs the following steps:
-      1. Retrieves the beginning-of-sequence (BOS) token ID (if available) and the end-of-sequence (EOS) token ID.
-      2. Tokenizes each string in the input list `text_data` using the provided `tokenizer`.
-      3. Prepends the BOS token ID to each tokenized sequence if it is available (i.e., not None); otherwise, nothing is prepended.
-      4. Appends the tokenizer's end-of-sequence (EOS) token to the token list of each text.
-      5. Concatenates all tokenized texts into a single long list of tokens.
-      6. Truncates the token list so that its total length is an exact multiple of `block_size` by discarding any extra tokens 
-         at the end that would not fill a complete block.
-      7. Splits the truncated token list into contiguous blocks, each of length `block_size`.
+    This function is designed for use with Hugging Face datasets (with batched=True). It processes
+    a batch of examples (where each example is a string under the 'text' key) by performing the following steps:
+
+      1. **Retrieve Special Token IDs:**  
+         It retrieves the beginning-of-sequence (BOS) token ID and the end-of-sequence (EOS) token ID from the tokenizer.
+         - The BOS token ID is obtained from `tokenizer.bos_token_id` (if available).
+         - The EOS token ID is obtained from `tokenizer.eos_token_id`.
+
+      2. **Per-Text Tokenization with Special Tokens:**  
+         For each text in the input list:
+           - It prepends the BOS token (if available).
+           - Tokenizes the text using the tokenizer (without adding any special tokens automatically).
+           - Appends the EOS token to the token list.
+         This is done individually for each text so that we can explicitly control the addition of special tokens.
+
+      3. **Concatenation:**  
+         All token lists are concatenated into one long list of tokens. This is achieved using the `chain` function
+         to flatten the list of lists.
+
+      4. **Truncation:**  
+         The total token list is truncated so that its length is an exact multiple of `block_size`.  
+         This is done by discarding any tokens at the end that would not complete a full block.
+
+      5. **Blocking:**  
+         The truncated token list is split into contiguous blocks, each of length `block_size`.
+
+      6. **Label Creation:**  
+         For language modeling tasks, the function creates a 'labels' field that is an exact copy of the 'input_ids'
+         blocks.
+
+    **Note on the attention mask field:**  
+    The returned dictionary does not include an `attention_mask` field. Including an attention mask with a value of `None` 
+    may cause issues with the Hugging Face Trainer, which expects either a valid tensor or for the key to be omitted entirely.
 
     Args:
-        text_data (List[str]): A list containing the text strings to tokenize.
-        tokenizer (Any): A tokenizer object with:
-            - A callable interface that returns a dictionary containing at least the key 'input_ids'
-              when a text string is passed in.
-            - Attributes `eos_token_id` (providing the token ID for the end-of-sequence) and 
-              `bos_token_id` (providing the token ID for the beginning-of-sequence, or None if unused).
-        block_size (int): The desired number of tokens per block.
+        examples (Dict[str, List[str]]):
+            A dictionary representing a batch of examples from the dataset. It must contain a key 'text'
+            whose value is a list of strings (one per example).
+        tokenizer (Any):
+            A tokenizer instance (e.g., from Hugging Face's transformers) that can process a single text string.
+            The tokenizer should return a dictionary containing at least the key 'input_ids' when called with a text,
+            and it must have attributes `bos_token_id` (which may be None) and `eos_token_id`.
+        block_size (int):
+            The desired number of tokens per block (for example, 1024 or 4096).
 
     Returns:
-        List[List[int]]: A list where each element is a block (a list) of token IDs, each of length `block_size`.
+        Dict[str, List[List[int]]]:
+            A dictionary where:
+              - 'input_ids' maps to a list of token blocks, each block being a list of token IDs of length `block_size`.
+              - 'labels' maps to a copy of the 'input_ids' blocks.
+            
+            **Note:** No `attention_mask` is included in the returned dictionary.
     """
-
+    from itertools import chain
+    # -------------------------------------------------------------------------
+    # Step 1: Retrieve Special Token IDs.
     # Retrieve the end-of-sequence (EOS) token ID from the tokenizer.
     eos_token_id: int = tokenizer.eos_token_id
-
     # Retrieve the beginning-of-sequence (BOS) token ID from the tokenizer.
-    # According to the Hugging Face documentation, this attribute always exists.
     # If not used, bos_token_id will be None.
     bos_token_id: Optional[int] = tokenizer.bos_token_id
 
-    # For each text in the input list:
-    #   - Prepend the BOS token (if available) using a one-line ternary operator,
-    #   - Tokenize the text to get a dictionary; extract the token IDs from 'input_ids',
-    #   - Append the EOS token ID to the token list.
-    # The list comprehension creates a list of lists of tokens (one per text).
-    #
-    # The asterisk operator (*) in front of the list comprehension unpacks the list of lists,
-    # meaning that each inner list is passed as a separate argument to the chain function.
-    # For example, chain(*[[1,2],[3,4]]) is equivalent to chain([1,2],[3,4]) and yields:
-    # 1, 2, 3, 4, effectively flattening the list of lists into one long list of tokens.
-    concatenated_tokens: List[int] = list(
-        chain(*[
-            # If a BOS token exists, prepend it; otherwise, use an empty list.
-            ([bos_token_id] if bos_token_id is not None else []) +
-            tokenizer(text)['input_ids'] + [eos_token_id]  # Tokenize text and append EOS token.
-            for text in text_data
-        ])
-    )
-
-    # Compute the total number of tokens in the concatenated list.
-    total_length: int = len(concatenated_tokens)
-
-    # Adjust the total length to be an exact multiple of block_size by discarding any extra tokens
-    # at the end that would not fill a complete block.
-    # This is achieved by performing integer division (//) of total_length by block_size,
-    # which computes the number of complete blocks that can be formed.
-    # Multiplying that number by block_size yields the total number of tokens that exactly fit into those blocks,
-    # effectively discarding any remaining tokens that would not complete a full block.
-    total_length = (total_length // block_size) * block_size
-
-    # Split the concatenated token list into blocks of size block_size.
-    # The list comprehension iterates over the token list in steps of block_size,
-    # slicing out a block each time.
-    # Because total_length has been truncated to be an exact multiple of block_size,
-    # each slice taken from index i to i + block_size will contain exactly block_size tokens.
-    # This ensures the entire token list is partitioned into equally sized blocks without any leftovers.
-    all_tokens: List[List[int]] = [
-        concatenated_tokens[i: i + block_size]
-        for i in range(0, total_length, block_size)
+    # -------------------------------------------------------------------------
+    # Step 2: Per-Text Tokenization with Special Tokens.
+    # For each text in the input list, perform the following:
+    #   - Prepend the BOS token if it exists.
+    #   - Tokenize the text to get a dictionary; extract the token IDs from 'input_ids'.
+    #   - Append the EOS token to the token list.
+    # The list comprehension processes each text individually.
+    token_lists: List[List[int]] = [
+        # If a BOS token exists, prepend it; otherwise, use an empty list.
+        ([bos_token_id] if bos_token_id is not None else []) +
+        tokenizer(text)['input_ids'] + [eos_token_id]  # Tokenize text and append EOS token.
+        for text in examples["text"]
     ]
 
-    # Return the list of token blocks.
-    return all_tokens
+    # -------------------------------------------------------------------------
+    # Step 3: Concatenate tokenized outputs across the batch.
+    # Flatten the list of token lists into a single long list using chain.
+    concatenated_tokens: List[int] = list(chain(*token_lists))
+
+    # -------------------------------------------------------------------------
+    # Step 4: Compute the total length and adjust to an exact multiple of block_size.
+    total_length: int = len(concatenated_tokens)
+    # Calculate the number of complete blocks that can be formed.
+    num_blocks: int = total_length // block_size
+    # Adjust total_length to discard any extra tokens that do not form a complete block.
+    total_length = num_blocks * block_size
+
+    # -------------------------------------------------------------------------
+    # Step 5: Split the concatenated token list into blocks of fixed size.
+    # The list comprehension iterates over the concatenated token list in steps of block_size,
+    # slicing out a block each time.
+    all_token_blocks: List[List[int]] = [
+        concatenated_tokens[i: i + block_size] for i in range(0, total_length, block_size)
+    ]
+
+    # -------------------------------------------------------------------------
+    # Step 6: Create labels for language modeling tasks.
+    # It is common for language models to use the input_ids as labels.
+    result: Dict[str, List[List[int]]] = {
+        "input_ids": all_token_blocks,
+        "labels": all_token_blocks.copy(),
+    }
+
+    return result
 
 
-def main_train(config: dict = {}):
+def main_train(config: dict = {}) -> str: # return final model path
+    from datetime import datetime
     from transformers import TrainingArguments, Trainer
     from pathlib import Path
     import datetime
     import os
-    import time
-    import random
     import torch
-    from typing import Optional, Callable
     from transformers import (
         AutoTokenizer,
         AutoModelForCausalLM,
-        PreTrainedModel,
-        TrainerCallback,
-        TrainerState,
-        TrainerControl
     )
     from datasets import load_dataset, Dataset
-    import wandb
-
     from tfa import TfaCallback
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # choose GPU
-
     # Basic seeding
-    seed_everything(42)
+    os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # choose GPU
+    seed = config.get('seed', 42)
+    seed_everything(seed)
 
-    # Load a small model (e.g. GPT-2).
-    # model_name = "gpt2"
+    # Log In
+    from huggingface_hub import login, whoami
+    key_file_path = "~/keys/master_hf_token.txt"
+    key_file_path = os.path.abspath(os.path.expanduser(key_file_path))
+    with open(key_file_path, "r", encoding="utf-8") as f:
+        token = f.read().strip()
+    login(token=token)
+    os.environ['HUGGINGFACE_TOKEN'] = token
+    user_info = whoami()
+    print(f"Currently logged in as: {user_info['name']}\n")
+
+    # Load model
     model_name = "google/gemma-2-2b"
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
+    model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name)
+    tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(model_name)
+    today = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
+    final_model_name: str = config.get('final_model_name', f'{model_name}-final-ft-model-{today}')
 
     # Prepare dataset
     # def my_prompt_format(nl_stmt: str) -> str:
@@ -156,22 +197,48 @@ def main_train(config: dict = {}):
     def my_prompt_format(nl_stmt: str) -> str:
         # format iddah used for less: https://huggingface.co/datasets/AI4M/less-proofnet-lean4-top1M/viewer/default/train?row=0 
         return f'informal statement {nl_stmt}'
-    # ds_train = load_dataset("UDACA/proofnet-v3-lean4", split="validation")
+    # ds_train = load_dataset("UDACA/proofnet-v3-lean4", split="validation").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
     ds_train = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
-    # ds_train = ds_train.map(to_text, num_procs=24) # converts to "text" if needed for next promptify depending on the fields of the ds
-    ds_train = ds_train.map(lambda eg: {"text": my_prompt_format(eg["nl_statement"]) + eg["formal_statement"]}, num_proc=24)
+    ds_eval = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
+    ds_tf_eval = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
 
-
+    # Get string we want by filling the "text" field with the prompt we want
+    # ds_train = ds_train.map(lambda eg: {"text": my_prompt_format(eg["nl_statement"]) + eg["formal_statement"]}, num_proc=24)
+    # ds_train = ds_train.map(lambda egs: {"text": [my_prompt_format(eg["nl_statement"]) + eg["formal_statement"] for eg in egs]}, batched=True, remove_columns=remove_columns, num_proc=24)
+    ds_train = ds_train.map(
+            lambda batch: {
+                "text": [
+                    my_prompt_format(example["nl_statement"]) + example["formal_statement"]
+                    for example in batch
+                ]
+            },
+            batched=True,
+            remove_columns=ds_train.column_names,  # remove all original columns
+            num_proc=24,
+    )
+    # Map the function over your dataset. Here, 'text' is removed afterwards since it's no longer needed.
+    ds_train = ds_train.map(
+        lambda examples: tokenize_and_group_texts_via_blocks(examples, tokenizer=tokenizer, block_size=1024),
+        batched=True,
+        remove_columns=["text"],
+        num_proc=24,
+    )
     ds_eval = ds_eval.map(
-        lambda ex: {
-            'prompt': my_prompt_format(ex['informal_prefix']), 
-            'gold_response': ex['formal_statement']
+        lambda examples: tokenize_and_group_texts_via_blocks(examples, tokenizer=tokenizer, block_size=1024),
+        batched=True,
+        remove_columns=["text"],
+        num_proc=24,
+    )
+    # Get string data set needed for teacher forcing (we don't tokenize here due to crucial alignment correctness needed during tokenization implemented in the tf code)
+    ds_tf_eval = ds_tf_eval.map(
+        lambda egs: {
+            'prompt': [my_prompt_format(eg['nl_statement']) for eg in egs], 
+            'gold_response': [eg['formal_statement'] for eg in egs ]
         },
         num_proc=24
     )
 
     # 4) Minimal training args: run for 1 step, do evaluation at the same step.
-    today: str = datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss')
     output_dir = Path(f'~/data/zipfit_less_runs/tfa_output_{today}').expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
     training_args = TrainingArguments(
@@ -186,10 +253,9 @@ def main_train(config: dict = {}):
         logging_steps=25,            # log after every step
         per_device_train_batch_size=4,
         gradient_accumulation_steps=2,
-        save_strategy="no",
-        # **FIX**: disable column pruning
-        remove_unused_columns=False,
-        save_steps=config.get('save_steps', 50), 
+        # save_strategy="no",
+        # remove_unused_columns=False, # Not needed anymore because we have a seperate ds_tf_eval object
+        save_steps=config.get('save_steps', 100), 
         save_total_limit=1,
         save_strategy=config.get('save_strategy', 'steps'),
         bf16=torch.cuda.is_bf16_supported(),
@@ -209,15 +275,18 @@ def main_train(config: dict = {}):
         seed=config.get('seed', 42),
         data_seed=config.get('data_seed', config.get('seed', 42)),
         torch_compile=True,
+        # - push hub param for end of training
+        push_to_hub=True,
+        hub_model_id=final_model_name
     )
 
     # 5) Attach TfaCallback
-    callback = TfaCallback(
-        tfa_dataset=ds_eval,
+    tfa_callback = TfaCallback(
+        tfa_dataset=ds_tf_eval,
         repo=model_name,
-        n_begin=186,
-        n_during=185,
-        n_end=186
+        n_begin=186, # yes we want to do tf eval on full eval set
+        n_during=4, # only partial tf eval during training, since it's per prompt, it would otherwise slow us down too much
+        n_end=186 # yes we want to do tf eval on full eval set
     )
 
     # 6) Build trainer
@@ -225,12 +294,25 @@ def main_train(config: dict = {}):
        model=model,
        args=training_args,
        train_dataset=ds_train,
-       eval_dataset=ds_train,  # or ds_eval, whichever you want for HF's standard .evaluate()
-       callbacks=[callback]
+       eval_dataset=ds_eval,  
+       callbacks=[tfa_callback]
     )
 
     # 7) Run training
     trainer.train()
+
+    # After training, explicitly save the final model and tokenizer to a separate folder.
+    final_model_dir = output_dir / final_model_name
+    final_model_dir.mkdir(parents=True, exist_ok=True)
+    trainer.save_model(str(final_model_dir))  # This saves both model and tokenizer if trainer.tokenizer is set.
+    tokenizer.save_pretrained(str(final_model_dir))  # Extra precaution, if needed.
+
+    # Push the final model to the Hub:
+    trainer.push_to_hub(commit_message="Final model checkpoint", blocking=config.get('blocking', True))
+
+    # return the final model path as str for later evals to use it if they want
+    return str(final_model_dir)
+
 
 def get_current_tmux_session_number() -> str:
     import os

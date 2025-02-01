@@ -1,10 +1,8 @@
 # tfa.py
 
 import os
-import time
 import random
 import torch
-from typing import Optional, Callable
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -40,7 +38,7 @@ def seed_everything(seed: int = 42):
         print("Warning: Transformers is only fully deterministic on GPU")
 
 
-def teacher_forced_accuracy_tfa(
+def tfa_teacher_forced_accuracy(
     prompt: str,
     gold_response: str,
     model: PreTrainedModel,
@@ -123,7 +121,7 @@ def compute_tfa_for_subds(
     Parameters:
       sub_ds: The subset of the dataset (like a HuggingFace 'Dataset' slice).
       model:  A language model (transformers PreTrainedModel).
-      repo:   The model repo string, used to load the correct tokenizer in teacher_forced_accuracy_tfa.
+      repo:   The model repo string, used to load the correct tokenizer in tfa_teacher_forced_accuracy.
       device: 'cuda' or 'cpu'.
 
     Returns:
@@ -136,7 +134,7 @@ def compute_tfa_for_subds(
         prompt = example["prompt"]
         gold_response = example["gold_response"]
 
-        acc_i = teacher_forced_accuracy_tfa(
+        acc_i = tfa_teacher_forced_accuracy(
             prompt=prompt,
             gold_response=gold_response,
             model=model,
@@ -166,7 +164,6 @@ class TfaCallback(TrainerCallback):
         n_begin: int = -1,
         n_during: int = 2,
         n_end: int = -1,
-        device: str = "cuda"
     ):
         """
         Args:
