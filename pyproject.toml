@@ -1,29 +1,52 @@
 [build-system]
-requires      = ["setuptools>=61.0.0", "wheel"]
+requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "zip-fit"
 version = "1.0.8"
 authors = [
-  { name="Elyas Obbad", email="eobbad@stanford.edu" },
+  { name = "Elyas Obbad", email = "eobbad@stanford.edu" },
 ]
 description = "Data Selection via Compression-Based Alignment"
 readme = "README.md"
 requires-python = ">=3.6"
+license = { file = "LICENSE" }
+keywords = ["data selection", "compression", "zip-fit", "nlp", "language models"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 
-license = { file = "LICENSE" }
-keywords = ["data selection", "compression", "zip-fit", "nlp", "language models"]
-
+# List all runtime dependencies here.
 dependencies = [
     "numpy>=1.21.0",
     "lz4>=3.1.10",
     "datasets>=1.17.0",
+    "networkx>=2.5",
+    "scipy",
+    "scikit-learn",
+    "pandas",
+    "requests",
+    "aiohttp",
+    "matplotlib",
+    "fire",
+    "Levenshtein",
+    "seaborn",
+    "wandb",
+    "twine",
+    "nvidia-htop",
+    "protobuf",
+    "torch",
+    "torchvision",
+    "trl",
+    "transformers",
+    "accelerate>=0.26.0",
+    "peft",
+    "bitsandbytes",
+    "einops",
+    "sentencepiece",
 ]
 
 [project.optional-dependencies]
@@ -31,5 +54,5 @@ dev = [
     "pytest>=6.0",
     "flake8>=3.9",
     "black>=21.0",
-    "mypy>=0.910"
+    "mypy>=0.910",
 ]
