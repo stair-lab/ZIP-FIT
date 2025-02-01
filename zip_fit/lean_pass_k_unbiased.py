@@ -663,9 +663,14 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     # ---------------------------------------------------------------------
     # Set the random seed from the configuration (default seed = 42)
     seed_everything(config.get('seed', 42))
-    # export CUDA_VISIBLE_DEVICES=1; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
-    # export CUDA_VISIBLE_DEVICES=2; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
-    # export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-zipfit"
+    # conda activate zip_fit
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=0; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --mode "gpt2" 
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=1; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --mode "Qwen/Qwen2.5-0.5B" 
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=2; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --mode "meta-llama/Llama-3.2-1B" 
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "google/gemma-2-2b'"
+    # onda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-zipfit"
+    # export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-dsir"
+    # export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-less"
     # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     
     # ---------------------------------------------------------------------
@@ -677,10 +682,13 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     k          = config.get('k', 5)                # The k value for pass@k (e.g., pass@5)
     plot_title = config.get('plot_title', "Pass@5 vs. N and Evaluation Time")
     # model      = config.get('model', 'SmolLM-135M')
-    # model      = config.get('model', 'gpt2')
+    model      = config.get('model', 'gpt2')
     model      = config.get('model', 'Qwen/Qwen2.5-0.5B')
     model      = config.get('model', 'meta-llama/Llama-3.2-1B')
+    model      = config.get('model', 'google/gemma-2-2b')
     model      = config.get('model', 'UDACA/math-gemma-2-2b-zipfit')
+    model      = config.get('model', 'UDACA/math-gemma-2-2b-less')
+    model      = config.get('model', 'UDACA/math-gemma-2-2b-dsir')
     print(f'{model=}')
     
     # ---------------------------------------------------------------------
@@ -745,6 +753,7 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     
     # Loop over each N value (each representing the number of completions generated per prompt)
     for i, N in enumerate(tqdm.tqdm(N_values, desc="Evaluating N values")):
+        print(f'{model=}')
         rep_start_time = time.time()  # Timer for all repetitions at this N
         
         # Lists to record pass@k scores and evaluation times for each repetition at this N
@@ -781,6 +790,9 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
             # Append the results from this repetition.
             passk_runs.append(score)
             rep_times.append(rep_time)
+
+        rep_end_time = time.time()
+        elapsed_N = rep_end_time - rep_start_time
         
         # Compute statistics for pass@k scores for this N.
         avg_passk = np.mean(passk_runs)
@@ -809,8 +821,6 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
                 "std_time": std_time,
                 "ci_time": ci_time,
             })
-        rep_end_time = time.time()
-        # elapsed_N = rep_end_time - rep_start_time
         
         # Print a summary for the current N.
         print(f"N={N}, Pass@{k} mean={avg_passk:.4f}, stdev={std_passk:.4f}, CI(95%)={ci_passk:.4f}, "
@@ -879,4 +889,5 @@ def _main(**kwargs):
     wandb.finish()
 
 if __name__ == "__main__":
-    _main()
+    import fire
+    fire.Fire(_main())
