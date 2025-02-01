@@ -660,6 +660,17 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     import math
     from typing import List
 
+    # Log In
+    from huggingface_hub import login, whoami
+    key_file_path = "~/keys/master_hf_token.txt"
+    key_file_path = os.path.abspath(os.path.expanduser(key_file_path))
+    with open(key_file_path, "r", encoding="utf-8") as f:
+        token = f.read().strip()
+    login(token=token)
+    os.environ['HUGGINGFACE_TOKEN'] = token
+    user_info = whoami()
+    print(f"Currently logged in as: {user_info['name']}\n")
+
     # ---------------------------------------------------------------------
     # Set the random seed from the configuration (default seed = 42)
     seed_everything(config.get('seed', 42))
