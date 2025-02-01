@@ -283,8 +283,8 @@ All must match for a successful import.
 
 ```bash
 cd ~
-python -c "from pantograph import Server; \
-           s = Server(imports=['Mathlib'], project_path='~/mathlib4'); \
+python -c "from pantograph import Server;import os; \
+           s = Server(imports=['Mathlib'], project_path=os.path.expanduser('~/mathlib4')); \
            print('Pantograph server started!')"
 ```
 - If you see **“Pantograph server started!”** and no “invalid header” errors, you’re good!

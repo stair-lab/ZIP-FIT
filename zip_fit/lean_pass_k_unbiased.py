@@ -67,6 +67,7 @@ from transformers import pipeline, set_seed
 from pantograph.server import Server
 from pantograph.data import CompilationUnit, TacticInvocation
 import tqdm
+import wandb
 
 from vllm import LLM, SamplingParams
 from vllm import RequestOutput
@@ -404,6 +405,7 @@ def run_pass_k_eval(
     top_p: float = 0.95,       # Nucleus sampling: limits token choices to the smallest set whose cumulative probability is >= top_p (e.g., 95%).
     top_k: float = 50,         # Top-k sampling: limits token choices to the top-k most likely tokens at each step (e.g., top 50 tokens).
     temperature: float = 0.7,
+    seed: int = 42,
     debug: bool = False,
 ) -> float:
     """
@@ -415,7 +417,7 @@ def run_pass_k_eval(
             model=model,                         # create vLLM model from path or HF name
             dtype=dtype,                         # specify float precision
             trust_remote_code=True,              # allow custom model code
-            seed=42,
+            seed=seed,
         )
         sampling_params = SamplingParams(
             temperature=temperature,# Controls randomness: higher values (e.g., 1.0) increase randomness; lower values (e.g., 0.1) make outputs more deterministic.
@@ -597,7 +599,7 @@ def main(config: dict = {}) -> None:
     print(f'Number prompts: {len(prompts)=}')
     print(f'Number of gold headers: {len(gold_headers)=}')
 
-    # Start per-model timer
+    # Start timer
     global_start_time = time.time()  # Start overall timer
 
     debug = True
@@ -613,7 +615,185 @@ def main(config: dict = {}) -> None:
     # End overall timer
     global_end_time = time.time()
     total_seconds = global_end_time - global_start_time
-    print(f"\nDone. Total run time for all models: {total_seconds:.2f} seconds.\a")
+    print(f"\nDone. Total run time for all models: {total_seconds:.2f} seconds, {total_seconds/60:.2f} minutes, {total_seconds/3600:.2f} hours.\a")
+
+def main_experiment_pass_k_vs_N_config(config: dict = {}):
+    """
+    Runs the pass@k experiment for a series of N values defined in the config,
+    repeats each experiment num_reps times to measure variance, and then plots
+    Pass@k vs. N with 95% confidence intervals.
+
+    The config dictionary should include:
+      - 'n_start': starting value for N (default 10)
+      - 'n_end': ending value for N (default 500)
+      - 'n_step': step size between n_start and n_end (default 10)
+      - 'num_reps': number of repetitions per N (default 10)
+      - 'k': the k value for pass@k (default 5)
+      - 'plot_title': title for the plot (default "Pass@5 vs. N")
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import math
+    from typing import List
+
+    # os.environ['CUDAVISIBLE_DEVICES'] = '3'  # choose GPU
+    seed_everything(config.get('seed', 42))
+
+    # Get configuration parameters (with defaults)
+    n_start = config.get('n_start', 5)
+    n_end = config.get('n_end', 10)
+    # n_step = config.get('n_step', 2)
+    n_step = config.get('num_points', 10)
+    num_reps = config.get('num_reps', 2)
+    k = config.get('k', 5)
+    plot_title = config.get('plot_title', "Pass@5 vs. N")
+    model: str = config.get('model', 'UDACA/math-gemma-2-2b-zipfit')
+
+    # Prompts
+    def my_prompt_format(nl_stmt: str) -> str:
+        return (
+            "Your task is translate the natural language version of the mathematical statement "
+            "to a formal Lean statement version, using the following format:\n"
+            "natural language statement:\nLet $z=\frac{1+i}{\sqrt{2}}.$What is $\left(z^{1^2}+z^{2^2}+z^{3^2}+\dots+z^{{12}^2}\right) \cdot \left(\frac{1}{z^{1^2}}+\frac{1}{z^{2^2}}+\frac{1}{z^{3^2}}+\dots+\frac{1}{z^{{12}^2}}\right)?$ $\textbf{(A) } 18 \qquad \textbf{(B) } 72-36\sqrt2 \qquad \textbf{(C) } 36 \qquad \textbf{(D) } 72 \qquad \textbf{(E) } 72+36\sqrt2$ Show that it is \textbf{(C) }36.\n"
+            "formal Lean language statement:##\ntheorem amc12a_2019_p21 (z : ℂ) (h₀ : z = (1 + Complex.I) / Real.sqrt 2) : (∑ k in Finset.Icc 1 12, (z^(k^2))) * (∑ k in Finset.Icc 1 12, (1 / z^(k^2))) = 36 := sorry\n##"
+            "natural language statement:\nIntegers $x$ and $y$ with $x>y>0$ satisfy $x+y+xy=80$. What is $x$? $ \textbf{(A)}\ 8 \qquad\textbf{(B)}\ 10 \qquad\textbf{(C)}\ 15 \qquad\textbf{(D)}\ 18 \qquad\textbf{(E)}\ 26$ Show that it is \textbf{(E)}\ 26.\n"
+            "formal Lean language statement:##\ntheorem amc12a_2015_p10 (x y : ℤ) (h₀ : 0 < y) (h₁ : y < x) (h₂ : x + y + (x * y) = 80) : x = 26 := sorry\n##"
+            "natural language statement:\nWhat is the [[volume]] of a [[cube]] whose [[surface area]] is twice that of a cube with volume 1? $\mathrm{(A)}\ \sqrt{2}\qquad\mathrm{(B)}\ 2\qquad\mathrm{(C)}\ 2\sqrt{2}\qquad\mathrm{(D)}\ 4\qquad\mathrm{(E)}\ 8$ Show that it is \mathrm{(C)}.\n"
+            "formal Lean language statement:##\ntheorem amc12a_2008_p8 (x y : ℝ) (h₀ : 0 < x ∧ 0 < y) (h₁ : y^3 = 1) (h₂ : 6 * x^2 = 2 * (6 * y^2)) : x^3 = 2 * Real.sqrt 2 := sorry\n##"
+            f"natural language statement:\n{nl_stmt}\n"
+            "formal Lean language statement:"
+        )
+    from datasets import load_dataset
+    ds_test = load_dataset('UDACA/proofnet-v3-lean4', split='test')
+    ds_test = ds_test.select(list(range(5)))
+
+    # Promptify & get Gold Truth Headers
+    prompts = [my_prompt_format(row['nl_statement']) for row in ds_test]
+    # model = None
+    # prompts = [f"##\n{row['formal_statement']}\n##" for row in ds_test]
+    # print(f'{prompts=}')
+    gold_headers = [row['header_no_import'] for row in ds_test]
+    # print(f'{gold_headers}=')
+    print(f'Number prompts: {len(prompts)=}')
+    print(f'Number of gold headers: {len(gold_headers)=}')
+
+    # Build a list of N values
+    # N_values = list(range(n_start, n_end + 1, n_step))
+    # Create `num_points` floats from n_start to n_end
+    arr_float = np.linspace(n_start, n_end, num_points)
+    # Round to integer
+    arr_rounded = np.rint(arr_float).astype(int)
+    
+    mean_passk_per_N = []
+    std_passk_per_N = []
+
+    # PyPantograph Lean4 Server
+    from pantograph import Server
+    server = Server(imports=["Mathlib", "Init"], project_path=os.path.expanduser("~/mathlib4"))
+    
+    print("Starting experiments...")
+    # Start timer
+    global_start_time = time.time()
+
+    # Get the base seed from the configuration (default is 42)
+    base_seed = config.get('seed', 42)
+
+    # Loop over each N value in our range (N = number of completions generated per prompt)
+    for i, N in enumerate(N_values):
+        # Start a timer for the current N value evaluation (all repetitions for this N)
+        rep_start_time = time.time()
+        
+        # List to store the pass@k score for each repetition at this N
+        passk_runs = []
+        
+        # Run the experiment 'num_reps' times to assess variance at this N
+        for rep in range(num_reps):
+            # Calculate a new seed for the current repetition to ensure variability
+            new_seed = base_seed + (i * num_reps) + rep
+            
+            # Set all random seeds using the new seed so that each run is different
+            seed_everything(new_seed)
+            
+            # Call the evaluation function:
+            # It generates 'N' completions per prompt, checks each for correctness (e.g., compilation),
+            # and computes the overall pass@k score.
+            score = run_pass_k_eval(
+                prompts=prompts,
+                model=model,
+                server=server,
+                headers=gold_headers,
+                k=k,
+                num_samples=N,
+                eval_batch_size=32,
+                seed=new_seed,
+                debug=False
+            )
+            # Append the pass@k score from this repetition to our results list for this N
+            passk_runs.append(score)
+        
+        # Convert the list of scores to a NumPy array for statistical analysis
+        arr = np.array(passk_runs)
+        
+        # Compute the mean pass@k score for the current N value
+        mean_score = arr.mean()
+        
+        # Compute the sample standard deviation (using Bessel's correction with ddof=1)
+        std_score = arr.std(ddof=1)
+        
+        # Save these computed values for later plotting
+        mean_passk_per_N.append(mean_score)
+        std_passk_per_N.append(std_score)
+        
+        # Stop the timer for this N and calculate the elapsed time for all repetitions
+        rep_end_time = time.time()
+        elapsed_N = rep_end_time - rep_start_time
+        
+        # Print a summary for the current N: mean pass@k, standard deviation, and time taken
+        print(f"N={N}, Pass@{k} mean={mean_score:.4f}, stdev={std_score:.4f}, time: {elapsed_N:.2f} sec for {num_reps} reps")
+
+    # End the overall experiment timer and compute the total runtime
+    global_end_time = time.time()
+    total_seconds = global_end_time - global_start_time
+    print(f"\nDone. Total experiment time: {total_seconds:.2f} seconds, {total_seconds/60:.2f} minutes, {total_seconds/3600:.2f} hours.")
+
+    print(f"\nDone. Total run time for all models: {total_seconds:.2f} seconds, {total_seconds/60:.2f} minutes, {total_seconds/3600:.2f} hours.\a")
+    
+    # Convert results to NumPy arrays for plotting
+    mean_passk_per_N = np.array(mean_passk_per_N)
+    std_passk_per_N = np.array(std_passk_per_N)
+    
+    # Compute a 95% confidence interval for each N:
+    # 95% CI: mean ± 1.96*(std / sqrt(num_reps))
+    z_score = 1.96
+    ci_halfwidth = z_score * (std_passk_per_N / math.sqrt(num_reps))
+
+    # After finishing the loop over N_values, print detailed results:
+    print("\nDetailed Results:")
+    for N, mean_val, std_val, ci in zip(N_values, mean_passk_per_N, std_passk_per_N, ci_halfwidth):
+        print(f"N={N}, Pass@{k} mean={mean_val:.4f}, stdev={std_val:.4f}, CI(95%)={ci:.4f}")
+
+    # ---- Plotting ----
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.errorbar(
+        N_values, mean_passk_per_N,
+        yerr=ci_halfwidth,
+        fmt='o-', capsize=5, ecolor='red', color='blue'
+    )
+    ax.set_title(plot_title)
+    ax.set_xlabel("N (Number of completions generated)")
+    ax.set_ylabel(f"Mean Pass@{k} ± 95% CI")
+    ax.grid(True)
+
+    # Save the plot locally
+    plot_file = "pass_at_k_plot.png"
+    fig.savefig(plot_file)
+    print(f"Plot saved to {plot_file}")
+
+    # Log the plot as an image to wandb using the file path
+    wandb.log({"pass_at_k_plot": wandb.Image(plot_file)})
+
+    # Optionally display the plot
+    plt.show()
 
 def _main(**kwargs):
     from datetime import datetime
@@ -625,9 +805,11 @@ def _main(**kwargs):
     kwargs = kwargs | {'today': today, 'tmux_sess_num': tmux_sess_num, 'hostname': gethostname()}
     run_name = f'{kwargs}' 
     run = wandb.init(mode=kwargs.get('mode', 'online'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
+    # run = wandb.init(mode=kwargs.get('mode', 'dryrun'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
     wandb.save(__file__) # save current code now, don't wait to wandb.finish, also useful: wandb.save("*.py") # upload all .py files in current directory
     print(f'Kwargs to run:\n{kwargs}')
-    main(kwargs)
+    # main(kwargs)
+    main_experiment_pass_k_vs_N_config(kwargs)
     run.alert(title="Run Completed", text=f"Run finished, run url: {run.get_url()}")
     print(f'{run.get_url()=}')
     wandb.finish()
