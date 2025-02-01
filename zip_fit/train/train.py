@@ -182,7 +182,9 @@ def main_train(config: dict = {}) -> str: # return final model path
     print(f"Currently logged in as: {user_info['name']}\n")
 
     # Load model
-    model_name = "google/gemma-2-2b"
+    # model_name = "google/gemma-2-2b"
+    # model_name      = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
+    model_name      = config.get('model_name', 'Qwen/Qwen2.5-0.5B-pn-v3-lean4-train-on-test')
     model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name)
     tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(model_name)
     today = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
@@ -251,12 +253,12 @@ def main_train(config: dict = {}) -> str: # return final model path
         evaluation_strategy="steps",# Evaluate every 'eval_steps'
         eval_steps=25,               # so we'll evaluate after 1 step
         logging_steps=25,            # log after every step
-        per_device_train_batch_size=4,
-        gradient_accumulation_steps=2,
+        per_device_train_batch_size=config.get('per_device_train_batch_size', 4),
+        gradient_accumulation_steps=config.get('gradient_accumulation_steps', 2),
         # save_strategy="no",
         # remove_unused_columns=False, # Not needed anymore because we have a seperate ds_tf_eval object
         save_steps=config.get('save_steps', 100), 
-        save_total_limit=1,
+        save_total_limit=config.get('save_total_limit', 1),
         save_strategy=config.get('save_strategy', 'steps'),
         bf16=torch.cuda.is_bf16_supported(),
         fp16=not torch.cuda.is_bf16_supported(),
@@ -275,9 +277,9 @@ def main_train(config: dict = {}) -> str: # return final model path
         seed=config.get('seed', 42),
         data_seed=config.get('data_seed', config.get('seed', 42)),
         torch_compile=True,
-        # - push hub param for end of training
+        # - push hub param for end of training, according to save_steps
         push_to_hub=True,
-        hub_model_id=final_model_name
+        hub_model_id=final_model_name,
     )
 
     # 5) Attach TfaCallback

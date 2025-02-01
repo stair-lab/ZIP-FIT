@@ -207,14 +207,14 @@ def pass_at_k(n: int, c: int, k: int) -> float:
     return 1.0 - product_term
 
 
-def generate_snippets_hf_pipeline(prompt: str, num_samples: int = 5, max_length: int = 512, model: str = 'gpt2') -> List[str]:
+def generate_snippets_hf_pipeline(prompt: str, num_samples: int = 5, max_length: int = 512, model_name: str = 'gpt2') -> List[str]:
     """
     Generates Lean 4 code snippets from a textual prompt using GPT-2 (toy example).
 
     This is just for demonstration: GPT-2 is not trained on Lean, so it's
     likely to produce nonsense in real usage. But it demonstrates the pipeline.
     """
-    generator = pipeline("text-generation", model=model)
+    generator = pipeline("text-generation", model=model_name)
     outputs = generator(
         prompt,
         num_return_sequences=num_samples,  # e.g. 5 completions
@@ -394,9 +394,9 @@ def _run_pass_k_eval(
 
 def run_pass_k_eval(
     prompts: List[str],
-    model: str, 
+    model_name: str, 
     server: Server,
-    headers: Optional[List[str]] = None,  # If None, parse the headers from model generation
+    headers: Optional[List[str]] = None,  # If None, parse the headers from model_name generation
     k: int = 5,
     num_samples: int = 30,
     dtype="bfloat16",
@@ -412,11 +412,11 @@ def run_pass_k_eval(
     Evaluate pass@k for each docstring: generate code with GPT-2,
     check how many compile under strict rules, then compute pass@k.
     """
-    if model is not None:
+    if model_name is not None:
         llm = LLM(
-            model=model,                         # create vLLM model from path or HF name
+            model=model_name,                         # create vLLM model_name from path or HF name
             dtype=dtype,                         # specify float precision
-            trust_remote_code=True,              # allow custom model code
+            trust_remote_code=True,              # allow custom model_name code
             seed=seed,
         )
         sampling_params = SamplingParams(
@@ -545,19 +545,19 @@ def main(config: dict = {}) -> None:
     # 3) Model pass@k test (toy)
     from huggingface_hub import create_repo, upload_file, whoami
     whoami()
-    model = 'gpt2'
-    model = 'UDACA/math-gpt2-zipfit'
-    model = 'UDACA/math-gpt2-dsir'
-    model = 'UDACA/math-gpt2-less'
-    # model = 'internlm/internlm2-math-plus-1_8b'
-    model = 'google/gemma-2-2b'
-    model = 'UDACA/math-gemma-2-2b-zipfit'
-    model = 'UDACA/math-gemma-2-2b-less'
-    model = 'UDACA/math-gemma-2-2b-dsir'
-    # model = 'mistralai/Mistral-7B-v0.1'
-    # model = 'meta-llama/Meta-Llama-3-8B'
-    # model = 'google/gemma-2-2b-it'
-    print(f'f{model=}') 
+    model_name = 'gpt2'
+    model_name = 'UDACA/math-gpt2-zipfit'
+    model_name = 'UDACA/math-gpt2-dsir'
+    model_name = 'UDACA/math-gpt2-less'
+    # model_name = 'internlm/internlm2-math-plus-1_8b'
+    model_name = 'google/gemma-2-2b'
+    model_name = 'UDACA/math-gemma-2-2b-zipfit'
+    model_name = 'UDACA/math-gemma-2-2b-less'
+    model_name = 'UDACA/math-gemma-2-2b-dsir'
+    # model_name = 'mistralai/Mistral-7B-v0.1'
+    # model_name = 'meta-llama/Meta-Llama-3-8B'
+    # model_name = 'google/gemma-2-2b-it'
+    print(f'f{model_name=}') 
     # Sanity Check Data
     # def my_prompt_format(nl_stmt: str) -> str:
     #     return (
@@ -591,7 +591,7 @@ def main(config: dict = {}) -> None:
 
     # Promptify & get Gold Truth Headers
     prompts = [my_prompt_format(row['nl_statement']) for row in ds_test]
-    # model = None
+    # model_name = None
     # prompts = [f"##\n{row['formal_statement']}\n##" for row in ds_test]
     # print(f'{prompts=}')
     gold_headers = [row['header_no_import'] for row in ds_test]
@@ -609,8 +609,8 @@ def main(config: dict = {}) -> None:
     # num_samples = 20
     # num_samples = 40
     num_samples = 5000
-    score = run_pass_k_eval(prompts, model, server, headers=gold_headers, k=k, num_samples=num_samples, eval_batch_size=eval_batch_size, debug=debug)
-    print(f"\n==== For {model} Final Average Pass@{k=}N={num_samples} across {len(prompts)} tasks: {score:.3f} ====\n")
+    score = run_pass_k_eval(prompts, model_name, server, headers=gold_headers, k=k, num_samples=num_samples, eval_batch_size=eval_batch_size, debug=debug)
+    print(f"\n==== For {model_name} Final Average Pass@{k=}N={num_samples} across {len(prompts)} tasks: {score:.3f} ====\n")
 
     # End overall timer
     global_end_time = time.time()
@@ -635,7 +635,7 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
          - 'num_reps': Number of repetitions per N to estimate variance.
          - 'k': The k value for pass@k (e.g., pass@5).
          - 'plot_title': Title for the plots.
-         - 'model': The model identifier used for code generation.
+         - 'model_name': The model identifier used for code generation.
          - 'seed': Base seed for random number generators.
     2. Load prompts and gold headers from a dataset.
     3. Initialize a Lean 4 server using PyPantograph.
@@ -675,13 +675,13 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     # Set the random seed from the configuration (default seed = 42)
     seed_everything(config.get('seed', 42))
     # conda activate zip_fit
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=0; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "gpt2" 
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=1; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "Qwen/Qwen2.5-0.5B" 
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=2; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "meta-llama/Llama-3.2-1B" 
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "google/gemma-2-2b'"
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-zipfit"
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-dsir"
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-less"
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=0; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model_name "gpt2" 
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=1; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model_name "Qwen/Qwen2.5-0.5B" 
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=2; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model_name "meta-llama/Llama-3.2-1B" 
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model_name "google/gemma-2-2b'"
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model_name "UDACA/math-gemma-2-2b-zipfit"
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model_name "UDACA/math-gemma-2-2b-dsir"
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model_name "UDACA/math-gemma-2-2b-less"
     # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     
     # ---------------------------------------------------------------------
@@ -692,15 +692,15 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     num_reps   = config.get('num_reps', 5)           # Repetitions per N
     k          = config.get('k', 5)                # The k value for pass@k (e.g., pass@5)
     plot_title = config.get('plot_title', "Pass@5 vs. N and Evaluation Time")
-    # model      = config.get('model', 'SmolLM-135M')
-    model      = config.get('model', 'gpt2')
-    model      = config.get('model', 'Qwen/Qwen2.5-0.5B')
-    model      = config.get('model', 'meta-llama/Llama-3.2-1B')
-    model      = config.get('model', 'google/gemma-2-2b')
-    model      = config.get('model', 'UDACA/math-gemma-2-2b-zipfit')
-    model      = config.get('model', 'UDACA/math-gemma-2-2b-less')
-    model      = config.get('model', 'UDACA/math-gemma-2-2b-dsir')
-    print(f'{model=}')
+    # model_name      = config.get('model_name', 'SmolLM-135M')
+    model_name      = config.get('model_name', 'gpt2')
+    model_name      = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
+    model_name      = config.get('model_name', 'meta-llama/Llama-3.2-1B')
+    model_name      = config.get('model_name', 'google/gemma-2-2b')
+    model_name      = config.get('model_name', 'UDACA/math-gemma-2-2b-zipfit')
+    model_name      = config.get('model_name', 'UDACA/math-gemma-2-2b-less')
+    model_name      = config.get('model_name', 'UDACA/math-gemma-2-2b-dsir')
+    print(f'{model_name=}')
     
     # ---------------------------------------------------------------------
     # Load prompts and gold headers from a dataset.
@@ -764,7 +764,7 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     
     # Loop over each N value (each representing the number of completions generated per prompt)
     for i, N in enumerate(tqdm.tqdm(N_values, desc="Evaluating N values")):
-        print(f'{model=}')
+        print(f'{model_name=}')
         rep_start_time = time.time()  # Timer for all repetitions at this N
         
         # Lists to record pass@k scores and evaluation times for each repetition at this N
@@ -785,7 +785,7 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
             #   - Computes and returns the overall pass@k score.
             score = run_pass_k_eval(
                 prompts=prompts,
-                model=model,
+                model_name=model_name,
                 server=server,
                 headers=gold_headers,
                 k=k,
