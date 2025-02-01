@@ -152,7 +152,6 @@ def tokenize_and_group_texts_via_blocks(
 
 
 def main_train(config: dict = {}) -> str: # return final model path
-    from datetime import datetime
     from transformers import TrainingArguments, Trainer
     from pathlib import Path
     import datetime
@@ -182,13 +181,14 @@ def main_train(config: dict = {}) -> str: # return final model path
     print(f"Currently logged in as: {user_info['name']}\n")
 
     # Load model
+    from datetime import datetime
     # model_name = "google/gemma-2-2b"
-    # model_name      = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
-    model_name      = config.get('model_name', 'Qwen/Qwen2.5-0.5B-pn-v3-lean4-train-on-test')
+    model_name      = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
     model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name)
     tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(model_name)
     today = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
     final_model_name: str = config.get('final_model_name', f'{model_name}-final-ft-model-{today}')
+    final_model_name: str = config.get('final_model_name', f'{model_name}pn-v3-lean4-train-on-test')
 
     # Prepare dataset
     # def my_prompt_format(nl_stmt: str) -> str:
