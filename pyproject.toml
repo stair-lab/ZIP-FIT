@@ -19,7 +19,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-# List all runtime dependencies here.
 dependencies = [
     "numpy>=1.21.0",
     "lz4>=3.1.10",
@@ -56,3 +55,7 @@ dev = [
     "black>=21.0",
     "mypy>=0.910",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["zip_fit", "zip_fit.*"]
