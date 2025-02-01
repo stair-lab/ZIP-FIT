@@ -94,8 +94,9 @@ If you have the ZIP-FIT repo at `~/ZIP-FIT`, install it in editable mode:
 ```bash
 git clone git@github.com:stair-lab/ZIP-FIT.git
 cd ZIP-FIT
-git checkout -b bm_dev
-git branch --set-upstream-to=origin/bm_dev bm_dev
+git fetch origin
+git branch -a
+git checkout -b bm_dev origin/bm_dev
 git branch -vv
 
 pip install -e ~/ZIP-FIT
@@ -165,6 +166,11 @@ git pull
 git submodule update --init --recursive
 # Then re-check src/lean-toolchain
 cat src/lean-toolchain
+```
+
+Test PyPantograph server:
+```bash
+python -m pantograph.server
 ```
 
 ## 5. Install Poetry
@@ -274,6 +280,10 @@ Now, Mathlib4 is on Lean 4.15.0, matching PyPantograph.
 ### 8A. Check Lean Versions
 
 ```bash
+poetry show
+# or
+pip list | grep pantograph
+
 lean --version
 # Should say 4.15.0 if you're in a folder overridden by elan or if conda isn't overshadowing anything.
 
@@ -284,6 +294,12 @@ cat lean-toolchain
 cd ~/PyPantograph/src
 cat lean-toolchain
 # → 4.15.0
+
+elan --version
+lean --version
+lake --version
+
+python -m pantograph.server
 ```
 
 All must match for a successful import.
@@ -295,6 +311,8 @@ cd ~
 python -c "from pantograph import Server;import os; \
            s = Server(imports=['Mathlib'], project_path=os.path.expanduser('~/mathlib4')); \
            print('Pantograph server started!')"
+
+python -m pantograph.server
 ```
 - If you see **“Pantograph server started!”** and no “invalid header” errors, you’re good!
 
