@@ -664,9 +664,9 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     # Set the random seed from the configuration (default seed = 42)
     seed_everything(config.get('seed', 42))
     # conda activate zip_fit
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=0; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --mode "gpt2" 
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=1; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --mode "Qwen/Qwen2.5-0.5B" 
-    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=2; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --mode "meta-llama/Llama-3.2-1B" 
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=0; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "gpt2" 
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=1; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "Qwen/Qwen2.5-0.5B" 
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=2; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "meta-llama/Llama-3.2-1B" 
     # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "google/gemma-2-2b'"
     # onda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-zipfit"
     # export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-dsir"
