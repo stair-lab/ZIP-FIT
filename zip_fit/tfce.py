@@ -387,9 +387,9 @@ def minimal_tfce_trainer_test():
 
     ds_train = load_dataset("hoskinson-center/proofnet", split="test")
     # ds_train = load_dataset("hoskinson-center/proofnet", split="validation")
-    ds_train = ds_train.map(lambda ex: {
-        "text": my_prompt_format(ex["nl_statement"])
-                 + ex["formal_statement"]
+    ds_train = ds_train.map(lambda eg: {
+        "text": my_prompt_format(eg["nl_statement"])
+                 + eg["formal_statement"]
                  + tokenizer.eos_token
     }, num_proc=24)
 
