@@ -95,6 +95,7 @@ If you have the ZIP-FIT repo at `~/ZIP-FIT`, install it in editable mode:
 git clone git@github.com:stair-lab/ZIP-FIT.git
 cd ZIP-FIT
 git checkout -b bm_dev
+git branch --set-upstream-to=origin/bm_dev bm_dev
 git branch -vv
 
 pip install -e ~/ZIP-FIT
@@ -144,6 +145,7 @@ Note: **you need Lean4, Mathlib4 and PyPantograph/Pantograph to all agree on Lea
 git clone --recurse-submodules git@github.com:lenianiva/PyPantograph.git
 cd PyPantograph
 git submodule update --init --recursive
+git pull
 ```
 
 ### 4A. Ensure PyPantograph & Submodule Are Lean 4.15.0
@@ -151,6 +153,7 @@ git submodule update --init --recursive
 PyPantograph has a `src/` submodule that also pins a Lean version. Confirm it’s `4.15.0`:
 
 ```bash
+cd PyPantograph
 cat src/lean-toolchain
 # Expect: leanprover/lean4:v4.15.0
 ```
@@ -165,6 +168,11 @@ cat src/lean-toolchain
 ```
 
 ## 5. Install Poetry
+
+Check if you have poetry:
+```bash
+poetry
+```
 
 ### (Optional)
 
@@ -208,6 +216,7 @@ If it hijacks your shell’s Python, you can open a new shell and re-activate zi
 1. **Stay** in the [`PyPantograph](https://github.com/stanford-centaur/PyPantograph)` folder (and in the `zip_fit` env).  
 2. **Configure Poetry** so it doesn’t create an extra venv:
    ```bash
+   cd ~/PyPantograph
    poetry config virtualenvs.create false
    ```
 3. **Install**:

@@ -617,106 +617,152 @@ def main(config: dict = {}) -> None:
     total_seconds = global_end_time - global_start_time
     print(f"\nDone. Total run time for all models: {total_seconds:.2f} seconds, {total_seconds/60:.2f} minutes, {total_seconds/3600:.2f} hours.\a")
 
+
 def main_experiment_pass_k_vs_N_config(config: dict = {}):
     """
     Runs the pass@k experiment for a series of N values defined in the config,
-    repeats each experiment num_reps times to measure variance, and then plots
-    Pass@k vs. N with 95% confidence intervals.
+    repeating each experiment a specified number of times to measure variance,
+    and then plots:
+      (1) Pass@k (with 95% CIs) versus N, and 
+      (2) Average evaluation time (with 95% CIs) versus N.
 
-    The config dictionary should include:
-      - 'n_start': starting value for N (default 10)
-      - 'n_end': ending value for N (default 500)
-      - 'n_step': step size between n_start and n_end (default 10)
-      - 'num_reps': number of repetitions per N (default 10)
-      - 'k': the k value for pass@k (default 5)
-      - 'plot_title': title for the plot (default "Pass@5 vs. N")
+    Requirements:
+    -----------------
+    1. Read experimental parameters from the config dictionary:
+         - 'n_start': Starting value for N (number of completions generated per prompt).
+         - 'n_end': Ending value for N.
+         - 'num_points': Number of points between n_start and n_end (if not provided, default is 10).
+         - 'num_reps': Number of repetitions per N to estimate variance.
+         - 'k': The k value for pass@k (e.g., pass@5).
+         - 'plot_title': Title for the plots.
+         - 'model': The model identifier used for code generation.
+         - 'seed': Base seed for random number generators.
+    2. Load prompts and gold headers from a dataset.
+    3. Initialize a Lean 4 server using PyPantograph.
+    4. For each N value (generated via np.linspace and rounded to integer):
+         - Run the evaluation num_reps times.
+         - For each repetition, update the random seed (base_seed plus an offset) to ensure variability.
+         - Measure both the pass@k score and the evaluation time for that repetition.
+    5. Compute mean, standard deviation, and 95% confidence intervals (CIs) for:
+         - Pass@k scores, and
+         - Evaluation times.
+    6. Print summary results during the loop and detailed results at the end.
+    7. Plot:
+         - N (x-axis) versus average pass@k (y-axis) with 95% CI error bars.
+         - N (x-axis) versus average evaluation time (y-axis) with 95% CI error bars.
+    8. Log the plots to wandb.
+    
+    Returns:
+         None
     """
     import numpy as np
     import matplotlib.pyplot as plt
     import math
     from typing import List
 
-    # os.environ['CUDAVISIBLE_DEVICES'] = '3'  # choose GPU
+    # ---------------------------------------------------------------------
+    # Set the random seed from the configuration (default seed = 42)
     seed_everything(config.get('seed', 42))
-
-    # Get configuration parameters (with defaults)
-    n_start = config.get('n_start', 5)
-    n_end = config.get('n_end', 10)
-    # n_step = config.get('n_step', 2)
-    n_step = config.get('num_points', 10)
-    num_reps = config.get('num_reps', 2)
-    k = config.get('k', 5)
-    plot_title = config.get('plot_title', "Pass@5 vs. N")
-    model: str = config.get('model', 'UDACA/math-gemma-2-2b-zipfit')
-
-    # Prompts
+    # export CUDA_VISIBLE_DEVICES=1; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    # export CUDA_VISIBLE_DEVICES=2; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    # export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-zipfit"
+    # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    
+    # ---------------------------------------------------------------------
+    # Read configuration parameters with defaults
+    n_start    = config.get('n_start', 50)          # Starting value for N
+    n_end      = config.get('n_end', 500)           # Ending value for N
+    num_points = config.get('num_points', 10)      # Number of N values between n_start and n_end
+    num_reps   = config.get('num_reps', 5)           # Repetitions per N
+    k          = config.get('k', 5)                # The k value for pass@k (e.g., pass@5)
+    plot_title = config.get('plot_title', "Pass@5 vs. N and Evaluation Time")
+    # model      = config.get('model', 'SmolLM-135M')
+    # model      = config.get('model', 'gpt2')
+    model      = config.get('model', 'Qwen/Qwen2.5-0.5B')
+    model      = config.get('model', 'meta-llama/Llama-3.2-1B')
+    model      = config.get('model', 'UDACA/math-gemma-2-2b-zipfit')
+    print(f'{model=}')
+    
+    # ---------------------------------------------------------------------
+    # Load prompts and gold headers from a dataset.
+    # We assume that our prompt formatting function is defined below.
     def my_prompt_format(nl_stmt: str) -> str:
         return (
             "Your task is translate the natural language version of the mathematical statement "
             "to a formal Lean statement version, using the following format:\n"
-            "natural language statement:\nLet $z=\frac{1+i}{\sqrt{2}}.$What is $\left(z^{1^2}+z^{2^2}+z^{3^2}+\dots+z^{{12}^2}\right) \cdot \left(\frac{1}{z^{1^2}}+\frac{1}{z^{2^2}}+\frac{1}{z^{3^2}}+\dots+\frac{1}{z^{{12}^2}}\right)?$ $\textbf{(A) } 18 \qquad \textbf{(B) } 72-36\sqrt2 \qquad \textbf{(C) } 36 \qquad \textbf{(D) } 72 \qquad \textbf{(E) } 72+36\sqrt2$ Show that it is \textbf{(C) }36.\n"
-            "formal Lean language statement:##\ntheorem amc12a_2019_p21 (z : ℂ) (h₀ : z = (1 + Complex.I) / Real.sqrt 2) : (∑ k in Finset.Icc 1 12, (z^(k^2))) * (∑ k in Finset.Icc 1 12, (1 / z^(k^2))) = 36 := sorry\n##"
-            "natural language statement:\nIntegers $x$ and $y$ with $x>y>0$ satisfy $x+y+xy=80$. What is $x$? $ \textbf{(A)}\ 8 \qquad\textbf{(B)}\ 10 \qquad\textbf{(C)}\ 15 \qquad\textbf{(D)}\ 18 \qquad\textbf{(E)}\ 26$ Show that it is \textbf{(E)}\ 26.\n"
-            "formal Lean language statement:##\ntheorem amc12a_2015_p10 (x y : ℤ) (h₀ : 0 < y) (h₁ : y < x) (h₂ : x + y + (x * y) = 80) : x = 26 := sorry\n##"
-            "natural language statement:\nWhat is the [[volume]] of a [[cube]] whose [[surface area]] is twice that of a cube with volume 1? $\mathrm{(A)}\ \sqrt{2}\qquad\mathrm{(B)}\ 2\qquad\mathrm{(C)}\ 2\sqrt{2}\qquad\mathrm{(D)}\ 4\qquad\mathrm{(E)}\ 8$ Show that it is \mathrm{(C)}.\n"
-            "formal Lean language statement:##\ntheorem amc12a_2008_p8 (x y : ℝ) (h₀ : 0 < x ∧ 0 < y) (h₁ : y^3 = 1) (h₂ : 6 * x^2 = 2 * (6 * y^2)) : x^3 = 2 * Real.sqrt 2 := sorry\n##"
+            "natural language statement:\nLet $z=\\frac{1+i}{\\sqrt{2}}.$What is $\\left(z^{1^2}+z^{2^2}+z^{3^2}+\\dots+z^{{12}^2}\\right) \\cdot "
+            "\\left(\\frac{1}{z^{1^2}}+\\frac{1}{z^{2^2}}+\\frac{1}{z^{3^2}}+\\dots+\\frac{1}{z^{{12}^2}}\\right)?$ "
+            "$\\textbf{(A)}\\ 18 \\qquad \\textbf{(B)}\\ 72-36\\sqrt2 \\qquad \\textbf{(C)}\\ 36 \\qquad \\textbf{(D)}\\ 72 \\qquad \\textbf{(E)}\\ 72+36\\sqrt2$ "
+            "Show that it is \\textbf{(C)}\\ 36.\n"
+            "formal Lean language statement:##\ntheorem amc12a_2019_p21 (z : ℂ) (h₀ : z = (1 + Complex.I) / Real.sqrt 2) : "
+            "(∑ k in Finset.Icc 1 12, (z^(k^2))) * (∑ k in Finset.Icc 1 12, (1 / z^(k^2))) = 36 := sorry\n##"
+            "natural language statement:\nIntegers $x$ and $y$ with $x>y>0$ satisfy $x+y+xy=80$. What is $x$? "
+            "$\\textbf{(A)}\\ 8 \\qquad\\textbf{(B)}\\ 10 \\qquad\\textbf{(C)}\\ 15 \\qquad\\textbf{(D)}\\ 18 \\qquad\\textbf{(E)}\\ 26$ Show that it is \\textbf{(E)}\\ 26.\n"
+            "formal Lean language statement:##\ntheorem amc12a_2015_p10 (x y : ℤ) (h₀ : 0 < y) (h₁ : y < x) "
+            "(h₂ : x + y + (x * y) = 80) : x = 26 := sorry\n##"
+            "natural language statement:\nWhat is the [[volume]] of a [[cube]] whose [[surface area]] is twice that of a cube with volume 1? "
+            "$\\mathrm{(A)}\\ \\sqrt{2}\\qquad\\mathrm{(B)}\\ 2\\qquad\\mathrm{(C)}\\ 2\\sqrt{2}\\qquad\\mathrm{(D)}\\ 4\\qquad\\mathrm{(E)}\\ 8$ Show that it is \\mathrm{(C)}.\n"
+            "formal Lean language statement:##\ntheorem amc12a_2008_p8 (x y : ℝ) (h₀ : 0 < x ∧ 0 < y) "
+            "(h₁ : y^3 = 1) (h₂ : 6 * x^2 = 2 * (6 * y^2)) : x^3 = 2 * Real.sqrt 2 := sorry\n##"
             f"natural language statement:\n{nl_stmt}\n"
             "formal Lean language statement:"
         )
     from datasets import load_dataset
     ds_test = load_dataset('UDACA/proofnet-v3-lean4', split='test')
-    ds_test = ds_test.select(list(range(5)))
-
-    # Promptify & get Gold Truth Headers
+    # ds_test = ds_test.select(list(range(185)))  # optionally select a subset
     prompts = [my_prompt_format(row['nl_statement']) for row in ds_test]
-    # model = None
-    # prompts = [f"##\n{row['formal_statement']}\n##" for row in ds_test]
-    # print(f'{prompts=}')
     gold_headers = [row['header_no_import'] for row in ds_test]
-    # print(f'{gold_headers}=')
     print(f'Number prompts: {len(prompts)=}')
     print(f'Number of gold headers: {len(gold_headers)=}')
-
-    # Build a list of N values
-    # N_values = list(range(n_start, n_end + 1, n_step))
-    # Create `num_points` floats from n_start to n_end
-    arr_float = np.linspace(n_start, n_end, num_points)
-    # Round to integer
-    arr_rounded = np.rint(arr_float).astype(int)
     
-    mean_passk_per_N = []
-    std_passk_per_N = []
-
-    # PyPantograph Lean4 Server
+    # ---------------------------------------------------------------------
+    # Generate a list of N values.
+    # Instead of a fixed step, we generate "num_points" evenly spaced values from n_start to n_end.
+    arr_float = np.linspace(n_start, n_end, num_points)
+    # Round the floats to the nearest integer.
+    N_values = np.rint(arr_float).astype(int)
+    N_values = [int(N) for N in N_values]
+    
+    # ---------------------------------------------------------------------
+    # Initialize lists to store statistics across N values:
+    mean_passk_per_N = []  # Mean pass@k for each N
+    std_passk_per_N = []   # Std dev of pass@k for each N
+    ci_passk_array = []    # 95% CI for pass@k for each N
+    avg_times = []         # Average evaluation time (sec) for each N
+    time_stds = []         # Std dev of evaluation times for each N
+    ci_time_array = []     # 95% CI for evaluation time for each N
+    
+    # ---------------------------------------------------------------------
+    # Initialize the Lean 4 server via PyPantograph.
     from pantograph import Server
     server = Server(imports=["Mathlib", "Init"], project_path=os.path.expanduser("~/mathlib4"))
     
     print("Starting experiments...")
-    # Start timer
-    global_start_time = time.time()
-
-    # Get the base seed from the configuration (default is 42)
+    global_start_time = time.time()  # Overall experiment timer
+    
+    # Get the base seed from the config (default 42)
     base_seed = config.get('seed', 42)
-
-    # Loop over each N value in our range (N = number of completions generated per prompt)
-    for i, N in enumerate(N_values):
-        # Start a timer for the current N value evaluation (all repetitions for this N)
-        rep_start_time = time.time()
+    
+    # Loop over each N value (each representing the number of completions generated per prompt)
+    for i, N in enumerate(tqdm.tqdm(N_values, desc="Evaluating N values")):
+        rep_start_time = time.time()  # Timer for all repetitions at this N
         
-        # List to store the pass@k score for each repetition at this N
+        # Lists to record pass@k scores and evaluation times for each repetition at this N
         passk_runs = []
+        rep_times = []
         
-        # Run the experiment 'num_reps' times to assess variance at this N
+        # Run the experiment num_reps times for the current N to assess variance.
         for rep in range(num_reps):
-            # Calculate a new seed for the current repetition to ensure variability
+            # Calculate a new seed for this repetition to ensure variability.
             new_seed = base_seed + (i * num_reps) + rep
+            seed_everything(new_seed)  # Set all random seeds
             
-            # Set all random seeds using the new seed so that each run is different
-            seed_everything(new_seed)
-            
-            # Call the evaluation function:
-            # It generates 'N' completions per prompt, checks each for correctness (e.g., compilation),
-            # and computes the overall pass@k score.
+            # Record the start time for this repetition.
+            start_time = time.time()
+            # Call run_pass_k_eval which:
+            #   - Generates 'N' completions per prompt,
+            #   - Checks each for correctness (e.g., compilation),
+            #   - Computes and returns the overall pass@k score.
             score = run_pass_k_eval(
                 prompts=prompts,
                 model=model,
@@ -728,72 +774,90 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
                 seed=new_seed,
                 debug=False
             )
-            # Append the pass@k score from this repetition to our results list for this N
+            # Record the end time and compute the elapsed time for this repetition.
+            end_time = time.time()
+            rep_time = end_time - start_time
+            
+            # Append the results from this repetition.
             passk_runs.append(score)
+            rep_times.append(rep_time)
         
-        # Convert the list of scores to a NumPy array for statistical analysis
-        arr = np.array(passk_runs)
+        # Compute statistics for pass@k scores for this N.
+        avg_passk = np.mean(passk_runs)
+        std_passk = np.std(passk_runs, ddof=1)
+        ci_passk = 1.96 * (std_passk / math.sqrt(num_reps))
         
-        # Compute the mean pass@k score for the current N value
-        mean_score = arr.mean()
+        # Compute statistics for evaluation times for this N.
+        avg_time = np.mean(rep_times)
+        std_time = np.std(rep_times, ddof=1)
+        ci_time = 1.96 * (std_time / math.sqrt(num_reps))
         
-        # Compute the sample standard deviation (using Bessel's correction with ddof=1)
-        std_score = arr.std(ddof=1)
-        
-        # Save these computed values for later plotting
-        mean_passk_per_N.append(mean_score)
-        std_passk_per_N.append(std_score)
-        
-        # Stop the timer for this N and calculate the elapsed time for all repetitions
-        rep_end_time = time.time()
-        elapsed_N = rep_end_time - rep_start_time
-        
-        # Print a summary for the current N: mean pass@k, standard deviation, and time taken
-        print(f"N={N}, Pass@{k} mean={mean_score:.4f}, stdev={std_score:.4f}, time: {elapsed_N:.2f} sec for {num_reps} reps")
+        # Save the computed statistics.
+        mean_passk_per_N.append(avg_passk)
+        std_passk_per_N.append(std_passk)
+        ci_passk_array.append(ci_passk)
+        avg_times.append(avg_time)
+        time_stds.append(std_time)
+        ci_time_array.append(ci_time)
 
-    # End the overall experiment timer and compute the total runtime
+        wandb.log({
+                "N": N,
+                "avg_passk": avg_passk,
+                "std_passk": std_passk,
+                "ci_passk": ci_passk,
+                "avg_time": avg_time,
+                "std_time": std_time,
+                "ci_time": ci_time,
+            })
+        rep_end_time = time.time()
+        # elapsed_N = rep_end_time - rep_start_time
+        
+        # Print a summary for the current N.
+        print(f"N={N}, Pass@{k} mean={avg_passk:.4f}, stdev={std_passk:.4f}, CI(95%)={ci_passk:.4f}, "
+              f"avg time={avg_time:.2f} sec, time CI={ci_time:.2f} sec for {num_reps} reps")
+    
+    # End overall experiment timer.
     global_end_time = time.time()
     total_seconds = global_end_time - global_start_time
-    print(f"\nDone. Total experiment time: {total_seconds:.2f} seconds, {total_seconds/60:.2f} minutes, {total_seconds/3600:.2f} hours.")
-
-    print(f"\nDone. Total run time for all models: {total_seconds:.2f} seconds, {total_seconds/60:.2f} minutes, {total_seconds/3600:.2f} hours.\a")
+    print(f"\nDone. Total experiment time: {total_seconds:.2f} seconds, "
+          f"{total_seconds/60:.2f} minutes, {total_seconds/3600:.2f} hours.")
     
-    # Convert results to NumPy arrays for plotting
-    mean_passk_per_N = np.array(mean_passk_per_N)
-    std_passk_per_N = np.array(std_passk_per_N)
-    
-    # Compute a 95% confidence interval for each N:
-    # 95% CI: mean ± 1.96*(std / sqrt(num_reps))
-    z_score = 1.96
-    ci_halfwidth = z_score * (std_passk_per_N / math.sqrt(num_reps))
-
-    # After finishing the loop over N_values, print detailed results:
+    # Print detailed results for each N value.
     print("\nDetailed Results:")
-    for N, mean_val, std_val, ci in zip(N_values, mean_passk_per_N, std_passk_per_N, ci_halfwidth):
-        print(f"N={N}, Pass@{k} mean={mean_val:.4f}, stdev={std_val:.4f}, CI(95%)={ci:.4f}")
-
-    # ---- Plotting ----
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.errorbar(
-        N_values, mean_passk_per_N,
-        yerr=ci_halfwidth,
-        fmt='o-', capsize=5, ecolor='red', color='blue'
-    )
-    ax.set_title(plot_title)
-    ax.set_xlabel("N (Number of completions generated)")
-    ax.set_ylabel(f"Mean Pass@{k} ± 95% CI")
-    ax.grid(True)
-
-    # Save the plot locally
-    plot_file = "pass_at_k_plot.png"
+    for N, mean_val, std_val, ci_val, t_avg, t_ci in zip(N_values, mean_passk_per_N, std_passk_per_N, ci_passk_array, avg_times, ci_time_array):
+        print(f"N={N}, Pass@{k} mean={mean_val:.4f}, stdev={std_val:.4f}, CI(95%)={ci_val:.4f}, "
+              f"avg time={t_avg:.2f} sec, time CI={t_ci:.2f} sec")
+    
+    # ---------------------------------------------------------------------
+    # Plotting:
+    # Create two subplots: one for pass@k and one for evaluation time.
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10))
+    
+    # Plot 1: N vs. Mean pass@k with 95% CI error bars.
+    ax1.errorbar(N_values, mean_passk_per_N, yerr=ci_passk_array, fmt='o-', capsize=5, ecolor='red', color='blue')
+    ax1.set_title(f"{plot_title} (Pass@{k})")
+    ax1.set_xlabel("N (Number of completions generated)")
+    ax1.set_ylabel(f"Mean Pass@{k} ± 95% CI")
+    ax1.grid(True)
+    
+    # Plot 2: N vs. Average evaluation time with 95% CI error bars.
+    ax2.errorbar(N_values, avg_times, yerr=ci_time_array, fmt='o-', capsize=5, ecolor='red', color='green')
+    ax2.set_title("Evaluation Time vs. N")
+    ax2.set_xlabel("N (Number of completions generated)")
+    ax2.set_ylabel("Average Evaluation Time (sec) ± 95% CI")
+    ax2.grid(True)
+    
+    # Save the figure locally.
+    plot_file = "pass_at_k_and_time_plot.png"
     fig.savefig(plot_file)
-    print(f"Plot saved to {plot_file}")
-
-    # Log the plot as an image to wandb using the file path
-    wandb.log({"pass_at_k_plot": wandb.Image(plot_file)})
-
-    # Optionally display the plot
+    print(f"\nPlot saved to {plot_file}")
+    
+    # Log the plot image to wandb.
+    wandb.log({"pass_at_k_and_time_plot": wandb.Image(plot_file)})
+    
+    # Display the plots.
     plt.show()
+
 
 def _main(**kwargs):
     from datetime import datetime
