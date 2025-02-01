@@ -10,8 +10,8 @@ setup(
     long_description_content_type="text/markdown",
     # packages=find_packages(),
     
-    package_dir={'': 'zip_fit'},
-    packages=find_packages('zip_fit'),  # imports all modules/folders with  __init__.py & python files
+    # Automatically find all packages (directories with __init__.py) starting from the project root.
+    packages=find_packages(),  # <-- This will include "zip_fit" and any subpackages
 
     python_requires=">=3.6",
     install_requires=[
