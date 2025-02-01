@@ -30,54 +30,65 @@ def seed_everything(seed: int = 42):
 
 from itertools import chain  # Import chain from the itertools module.
 
-def create_blocks(text_data, tokenizer, block_size):
+from typing import List, Any, Optional
+from itertools import chain
+
+def create_blocks(text_data: List[str], tokenizer: Any, block_size: int) -> List[List[int]]:
     """
     Tokenize input text data and split the tokens into fixed-size blocks.
 
     This function performs the following steps:
-      1. Tokenizes each string in the input list `text_data` using the provided `tokenizer`.
-      2. Appends the tokenizer's end-of-sequence (EOS) token to the token list of each text.
-      3. Concatenates all tokenized texts into a single long list of tokens.
-      4. Truncates the token list so that its total length is a multiple of `block_size`.
-      5. Splits the truncated token list into contiguous blocks, each of length `block_size`.
+      1. Retrieves the beginning-of-sequence (BOS) token ID (if available) and the end-of-sequence (EOS) token ID.
+      2. Tokenizes each string in the input list `text_data` using the provided `tokenizer`.
+      3. Prepends the BOS token ID to each tokenized sequence if it is available (i.e., not None); otherwise, nothing is prepended.
+      4. Appends the tokenizer's end-of-sequence (EOS) token to the token list of each text.
+      5. Concatenates all tokenized texts into a single long list of tokens.
+      6. Truncates the token list so that its total length is an exact multiple of `block_size` by discarding any extra tokens 
+         at the end that would not fill a complete block.
+      7. Splits the truncated token list into contiguous blocks, each of length `block_size`.
 
     Args:
-        text_data (list of str): A list containing the text strings to tokenize.
-        tokenizer: An object with:
+        text_data (List[str]): A list containing the text strings to tokenize.
+        tokenizer (Any): A tokenizer object with:
             - A callable interface that returns a dictionary containing at least the key 'input_ids'
               when a text string is passed in.
-            - An attribute `eos_token_id` which provides the token ID for the end-of-sequence.
+            - Attributes `eos_token_id` (providing the token ID for the end-of-sequence) and 
+              `bos_token_id` (providing the token ID for the beginning-of-sequence, or None if unused).
         block_size (int): The desired number of tokens per block.
 
     Returns:
-        list of list of int: A list where each element is a block (a list) of token IDs, each of length `block_size`.
+        List[List[int]]: A list where each element is a block (a list) of token IDs, each of length `block_size`.
     """
 
     # Retrieve the end-of-sequence (EOS) token ID from the tokenizer.
-    eos_token_id = tokenizer.eos_token_id
+    eos_token_id: int = tokenizer.eos_token_id
+
+    # Retrieve the beginning-of-sequence (BOS) token ID from the tokenizer.
+    # According to the Hugging Face documentation, this attribute always exists.
+    # If not used, bos_token_id will be None.
+    bos_token_id: Optional[int] = tokenizer.bos_token_id
 
     # For each text in the input list:
-    #   - Tokenize the text to get a dictionary; extract the token IDs from 'input_ids'.
+    #   - Prepend the BOS token (if available) using a one-line ternary operator,
+    #   - Tokenize the text to get a dictionary; extract the token IDs from 'input_ids',
     #   - Append the EOS token ID to the token list.
     # The list comprehension creates a list of lists of tokens (one per text).
     #
     # The asterisk operator (*) in front of the list comprehension unpacks the list of lists,
-    # meaning that each inner list is passed as a separate argument to the chain function
-    # eg chain(*[[1,2],[3,4]]) -> chain([1,2],[3,4]). 
-    # Then the chain function, imported from itertools, takes multiple iterables as arguments and
-    # returns a single iterator that yields elements from the first iterable, then the second,
-    # and so on, effectively flattening the list of lists into one long list of tokens
-    # effectively chain([1,2],[3,4]) ~ [1,2,3,4] via a generator
-    # For example, chain([1, 2], [3, 4]) (chain of tok seqs) yields: 1, 2, 3, 4 (return each tok as if it was one long tok seq).
-    concatenated_tokens = list(
+    # meaning that each inner list is passed as a separate argument to the chain function.
+    # For example, chain(*[[1,2],[3,4]]) is equivalent to chain([1,2],[3,4]) and yields:
+    # 1, 2, 3, 4, effectively flattening the list of lists into one long list of tokens.
+    concatenated_tokens: List[int] = list(
         chain(*[
+            # If a BOS token exists, prepend it; otherwise, use an empty list.
+            ([bos_token_id] if bos_token_id is not None else []) +
             tokenizer(text)['input_ids'] + [eos_token_id]  # Tokenize text and append EOS token.
             for text in text_data
         ])
     )
 
     # Compute the total number of tokens in the concatenated list.
-    total_length = len(concatenated_tokens)
+    total_length: int = len(concatenated_tokens)
 
     # Adjust the total length to be an exact multiple of block_size by discarding any extra tokens
     # at the end that would not fill a complete block.
@@ -93,13 +104,14 @@ def create_blocks(text_data, tokenizer, block_size):
     # Because total_length has been truncated to be an exact multiple of block_size,
     # each slice taken from index i to i + block_size will contain exactly block_size tokens.
     # This ensures the entire token list is partitioned into equally sized blocks without any leftovers.
-    all_tokens = [
+    all_tokens: List[List[int]] = [
         concatenated_tokens[i: i + block_size]
         for i in range(0, total_length, block_size)
     ]
 
     # Return the list of token blocks.
     return all_tokens
+
 
 def main_train(config: dict = {}):
     from transformers import TrainingArguments, Trainer
@@ -148,7 +160,7 @@ def main_train(config: dict = {}):
     ds_train = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
     # ds_train = ds_train.map(to_text, num_procs=24) # converts to "text" if needed for next promptify depending on the fields of the ds
     ds_train = ds_train.map(lambda eg: {"text": my_prompt_format(eg["nl_statement"]) + eg["formal_statement"]}, num_proc=24)
-    
+
 
     ds_eval = ds_eval.map(
         lambda ex: {
