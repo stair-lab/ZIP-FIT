@@ -151,168 +151,199 @@ def tokenize_and_group_texts_via_blocks(
     return result
 
 
-def main_train(config: dict = {}) -> str: # return final model path
-    from transformers import TrainingArguments, Trainer
+def main_train(config: dict = {}) -> str:
+    """
+    Trains the model using the provided configuration, saves the final checkpoint (model + tokenizer)
+    in a dedicated subdirectory, and pushes the final model to the Hugging Face Hub.
+    
+    Args:
+        config (dict): Configuration dictionary for training parameters.
+        
+    Returns:
+        str: The final model directory path.
+    """
+    from datetime import datetime
+    from transformers import TrainingArguments, Trainer, AutoTokenizer, AutoModelForCausalLM
     from pathlib import Path
-    import datetime
     import os
     import torch
-    from transformers import (
-        AutoTokenizer,
-        AutoModelForCausalLM,
-    )
     from datasets import load_dataset, Dataset
     from tfa import TfaCallback
 
-    # Basic seeding
-    os.environ['CUDA_VISIBLE_DEVICES'] = '6'  # choose GPU
-    seed = config.get('seed', 42)
+    # ------------------------------
+    # Set device and seed.
+    # ------------------------------
+    os.environ['CUDA_VISIBLE_DEVICES'] = config.get('cuda_visible_devices', '6')  # choose GPU
+    seed: int = config.get('seed', 42)
     seed_everything(seed)
 
-    # Log In
+    # ------------------------------
+    # Log in to Hugging Face Hub.
+    # ------------------------------
     from huggingface_hub import login, whoami
-    key_file_path = "~/keys/master_hf_token.txt"
-    key_file_path = os.path.abspath(os.path.expanduser(key_file_path))
+    key_file_path: str = os.path.abspath(os.path.expanduser(config.get('key_file_path', "~/keys/master_hf_token.txt")))
     with open(key_file_path, "r", encoding="utf-8") as f:
-        token = f.read().strip()
+        token: str = f.read().strip()
     login(token=token)
     os.environ['HUGGINGFACE_TOKEN'] = token
     user_info = whoami()
     print(f"Currently logged in as: {user_info['name']}\n")
 
-    # Load model
-    from datetime import datetime
-    # model_name = "google/gemma-2-2b"
-    model_name      = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
+    # ------------------------------
+    # Load model and tokenizer.
+    # ------------------------------
+    model_name: str = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
     model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name)
     tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(model_name)
-    today = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
-    final_model_name: str = config.get('final_model_name', f'{model_name}-final-ft-model-{today}')
-    final_model_name: str = config.get('final_model_name', f'{model_name}pn-v3-lean4-train-on-test')
+    today: str = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
+    # Use a custom final model name if provided; otherwise use a default.
+    final_model_name: str = config.get('final_model_name', f'UDACA/{model_name.replace("/", "-")}pn-v3-lean4-train-on-test')
 
-    # Prepare dataset
-    # def my_prompt_format(nl_stmt: str) -> str:
-    #     return (
-    #         "Translate the natural language version of the mathematical statement "
-    #         f"to a formal Lean version:\n{nl_stmt}\n"
-    #     )
+    # ------------------------------
+    # Prepare datasets.
+    # Three dataset views:
+    #   - ds_train and ds_eval: tokenized for CE loss.
+    #   - ds_tf_eval: raw strings for teacher-forced evaluation.
+    # ------------------------------
     def my_prompt_format(nl_stmt: str) -> str:
-        # format iddah used for less: https://huggingface.co/datasets/AI4M/less-proofnet-lean4-top1M/viewer/default/train?row=0 
+        # Format used for less (see provided URL)
         return f'informal statement {nl_stmt}'
-    # ds_train = load_dataset("UDACA/proofnet-v3-lean4", split="validation").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
-    ds_train = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
-    ds_eval = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
-    ds_tf_eval = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch') # Load the test split and convert data to PyTorch tensors for seamless integration with the training pipeline.
 
-    # Get string we want by filling the "text" field with the prompt we want
-    # ds_train = ds_train.map(lambda eg: {"text": my_prompt_format(eg["nl_statement"]) + eg["formal_statement"]}, num_proc=24)
-    # ds_train = ds_train.map(lambda egs: {"text": [my_prompt_format(eg["nl_statement"]) + eg["formal_statement"] for eg in egs]}, batched=True, remove_columns=remove_columns, num_proc=24)
+    # Load datasets with torch format.
+    ds_train: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
+    ds_eval: Dataset  = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
+    ds_tf_eval: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
+
+    # Create a new "text" field for tokenized datasets by concatenating formatted prompt and formal statement.
     ds_train = ds_train.map(
-            lambda batch: {
-                "text": [
-                    my_prompt_format(example["nl_statement"]) + example["formal_statement"]
-                    for example in batch
-                ]
-            },
-            batched=True,
-            remove_columns=ds_train.column_names,  # remove all original columns
-            num_proc=24,
-    )
-    # Map the function over your dataset. Here, 'text' is removed afterwards since it's no longer needed.
-    ds_train = ds_train.map(
-        lambda examples: tokenize_and_group_texts_via_blocks(examples, tokenizer=tokenizer, block_size=1024),
+        lambda batch: {
+            # Zip together the columns so we iterate over examples.
+            "text": [my_prompt_format(nl) + formal 
+                     for nl, formal in zip(batch["nl_statement"], batch["formal_statement"])]
+        },
         batched=True,
-        remove_columns=["text"],
+        remove_columns=ds_train.column_names,  # Remove all original columns.
+        num_proc=24,
+    )
+    # Tokenize and group text for ds_train.
+    ds_train = ds_train.map(
+        lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=1024),
+        batched=True,
+        remove_columns=ds_train.column_names, 
+        num_proc=24,
+    )
+    
+    # Do the same for ds_eval.
+    ds_eval = ds_eval.map(
+        lambda batch: {
+            # Zip together the columns so we iterate over examples.
+            "text": [my_prompt_format(nl) + formal 
+                     for nl, formal in zip(batch["nl_statement"], batch["formal_statement"])]
+        },
+        batched=True,
+        remove_columns=ds_eval.column_names,  # Remove all original columns.
         num_proc=24,
     )
     ds_eval = ds_eval.map(
-        lambda examples: tokenize_and_group_texts_via_blocks(examples, tokenizer=tokenizer, block_size=1024),
+        lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=1024),
         batched=True,
-        remove_columns=["text"],
+        remove_columns=ds_eval.column_names,
         num_proc=24,
     )
-    # Get string data set needed for teacher forcing (we don't tokenize here due to crucial alignment correctness needed during tokenization implemented in the tf code)
+    # For teacher-forced evaluation, retain raw strings by creating 'prompt' and 'gold_response' fields.
     ds_tf_eval = ds_tf_eval.map(
-        lambda egs: {
-            'prompt': [my_prompt_format(eg['nl_statement']) for eg in egs], 
-            'gold_response': [eg['formal_statement'] for eg in egs ]
+        lambda batch: {
+            'prompt': [my_prompt_format(nl) for nl in batch['nl_statement']],
+            'gold_response': [formal for formal in batch['formal_statement']]
         },
+        batched=True,
         num_proc=24
     )
 
-    # 4) Minimal training args: run for 1 step, do evaluation at the same step.
-    output_dir = Path(f'~/data/zipfit_less_runs/tfa_output_{today}').expanduser()
+    # ------------------------------
+    # Define training arguments.
+    # ------------------------------
+    # Create the main output directory.
+    output_dir: Path = Path(f'~/data/zipfit_less_runs/tfa_output_{today}').expanduser()
     output_dir.mkdir(parents=True, exist_ok=True)
+    
     training_args = TrainingArguments(
-        output_dir=output_dir,
+        output_dir=str(output_dir),  # Main output directory.
         do_train=True,
         do_eval=True,
-    #    max_steps=1,                # Only 1 step
-        num_train_epochs=1,
-        eval_on_start=config.get('eval_on_start', True),
-        evaluation_strategy="steps",# Evaluate every 'eval_steps'
-        eval_steps=25,               # so we'll evaluate after 1 step
-        logging_steps=25,            # log after every step
+        # num_train_epochs=config.get('num_train_epochs', 1),  # Total training epochs.
+        eval_on_start=config.get('eval_on_start', True),     # Evaluate before training starts.
+        evaluation_strategy=config.get('evaluation_strategy', "steps"),  # Evaluate every few steps.
+        eval_steps=config.get('eval_steps', 25),             # Evaluate after every 25 steps.
+        logging_steps=config.get('logging_steps', 25),       # Log metrics every 25 steps.
         per_device_train_batch_size=config.get('per_device_train_batch_size', 4),
         gradient_accumulation_steps=config.get('gradient_accumulation_steps', 2),
-        # save_strategy="no",
-        # remove_unused_columns=False, # Not needed anymore because we have a seperate ds_tf_eval object
-        save_steps=config.get('save_steps', 100), 
-        save_total_limit=config.get('save_total_limit', 1),
+        save_steps=config.get('save_steps', 100),            # Save a checkpoint every 100 steps.
+        save_total_limit=config.get('save_total_limit', 1),    # Keep only the most recent checkpoint.
         save_strategy=config.get('save_strategy', 'steps'),
-        bf16=torch.cuda.is_bf16_supported(),
-        fp16=not torch.cuda.is_bf16_supported(),
-        # -- optim
+        bf16=torch.cuda.is_bf16_supported(),               # Use bf16 if supported.
+        fp16=not torch.cuda.is_bf16_supported(),            # Otherwise, use fp16.
         optim=config.get('optim', 'adamw_torch'),
-        # optim=config.get('optim', 'paged_adamw_32bit'),
         learning_rate=config.get('learning_rate', 1e-6),
         weight_decay=config.get('weight_decay', 1e-4),
-        # gradient_checkpointing=config.get('gradient_checkpointing', False), # careful might give issues, but not in skampere1
-        gradient_checkpointing=config.get('gradient_checkpointing', True), # careful might give issues, but not in skampere1
-        # # -- scheduler
-        # lr_scheduler_type=config.get('lr_scheduler_type', 'constant'), # this is the hf default btw
-        lr_scheduler_type=config.get('lr_scheduler_type', 'constant_with_warmup'), # this is the hf default btw
-        warmup_ratio=config.get('warmup_ratio', 0.05), 
-        # # -- seed
-        seed=config.get('seed', 42),
-        data_seed=config.get('data_seed', config.get('seed', 42)),
+        gradient_checkpointing=config.get('gradient_checkpointing', True),
+        lr_scheduler_type=config.get('lr_scheduler_type', 'constant_with_warmup'),
+        warmup_ratio=config.get('warmup_ratio', 0.05),
+        seed=seed,
+        data_seed=config.get('data_seed', seed),
         torch_compile=True,
-        # - push hub param for end of training, according to save_steps
+        # Hub push parameters.
         push_to_hub=True,
         hub_model_id=final_model_name,
     )
 
-    # 5) Attach TfaCallback
+    # ------------------------------
+    # Attach teacher-forced evaluation callback.
+    # ------------------------------
     tfa_callback = TfaCallback(
         tfa_dataset=ds_tf_eval,
         repo=model_name,
-        n_begin=186, # yes we want to do tf eval on full eval set
-        n_during=4, # only partial tf eval during training, since it's per prompt, it would otherwise slow us down too much
-        n_end=186 # yes we want to do tf eval on full eval set
+        n_begin=config.get('n_begin', 186),  # Use full eval set at beginning.
+        n_during=config.get('n_during', 4),    # Partial eval during training to save time.
+        n_end=config.get('n_end', 186)         # Use full eval set at end.
     )
 
-    # 6) Build trainer
+    # ------------------------------
+    # Build the Trainer.
+    # ------------------------------
     trainer = Trainer(
        model=model,
        args=training_args,
        train_dataset=ds_train,
-       eval_dataset=ds_eval,  
-       callbacks=[tfa_callback]
+       eval_dataset=ds_eval,
+       callbacks=[tfa_callback],
+       tokenizer=tokenizer,  # Ensure tokenizer is saved and pushed.
     )
 
-    # 7) Run training
+    # ------------------------------
+    # Run training.
+    # ------------------------------
     trainer.train()
 
-    # After training, explicitly save the final model and tokenizer to a separate folder.
-    final_model_dir = output_dir / final_model_name
+    # ------------------------------
+    # Save final model and tokenizer in a dedicated subdirectory.
+    # ------------------------------
+    final_model_dir: Path = output_dir / final_model_name
     final_model_dir.mkdir(parents=True, exist_ok=True)
-    trainer.save_model(str(final_model_dir))  # This saves both model and tokenizer if trainer.tokenizer is set.
-    tokenizer.save_pretrained(str(final_model_dir))  # Extra precaution, if needed.
+    trainer.save_model(str(final_model_dir))          # Saves both model and tokenizer.
+    tokenizer.save_pretrained(str(final_model_dir))     # Extra precaution.
 
-    # Push the final model to the Hub:
+    # ------------------------------
+    # Push the final model (and tokenizer) to the Hub.
+    # The push will be blocking by default unless 'blocking' is overridden in config.
+    # ------------------------------
     trainer.push_to_hub(commit_message="Final model checkpoint", blocking=config.get('blocking', True))
 
-    # return the final model path as str for later evals to use it if they want
+    # Construct the final model URL and print it.
+    final_model_url: str = f"https://huggingface.co/{final_model_name}"
+    print(f"Final model URL: {final_model_url}")
+
+    # Return the final model directory path as a string.
     return str(final_model_dir)
 
 
@@ -331,7 +362,7 @@ def _main(**kwargs):
     tmux_sess_num = None
     kwargs = kwargs | {'today': today, 'tmux_sess_num': tmux_sess_num, 'hostname': gethostname()}
     run_name = f'{kwargs}' 
-    run = wandb.init(mode=kwargs.get('mode', 'online'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
+    run = wandb.init(mode=kwargs.get('mode', 'online'), project="zip-fit-train", name=run_name, save_code=True, config=kwargs)
     # run = wandb.init(mode=kwargs.get('mode', 'dryrun'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
     wandb.save(__file__) # save current code now, don't wait to wandb.finish, also useful: wandb.save("*.py") # upload all .py files in current directory
     print(f'Kwargs to run:\n{kwargs}')
