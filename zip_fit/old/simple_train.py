@@ -10,16 +10,6 @@ from train.tfa_callback import TfaCallback
 
 from tfa import seed_everything
 
-def get_current_tmux_session_number() -> str:
-    """ Returns the current tmux session number. """
-    import subprocess
-    try:
-        # 'tmux display-message -p "#S"' gets the current session's name/number.
-        output = subprocess.check_output(['tmux', 'display-message', '-p', '#S'], text=True)
-        return output.strip()
-    except Exception:
-        return ""
-
 def main(**config):
     print(f'Config for main\'s run:\n{config}')
 
@@ -111,6 +101,12 @@ def main(**config):
     trainer.train()
     # - end run
     return os.path.expanduser(output_dir)
+
+def get_current_tmux_session_number() -> str:
+    import os
+    # Executes "tmux display-message -p '#S'" to retrieve the current tmux session name/number,
+    # reads the output from the command, strips any surrounding whitespace, and returns it.
+    return os.popen("tmux display-message -p '#S'").read().strip()
 
 def _main(**kwargs):
     from datetime import datetime

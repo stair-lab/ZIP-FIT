@@ -679,9 +679,9 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=1; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "Qwen/Qwen2.5-0.5B" 
     # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=2; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "meta-llama/Llama-3.2-1B" 
     # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "google/gemma-2-2b'"
-    # onda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-zipfit"
-    # export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-dsir"
-    # export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-less"
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-zipfit"
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-dsir"
+    # conda activate zip_fit; export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py --model "UDACA/math-gemma-2-2b-less"
     # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     
     # ---------------------------------------------------------------------
@@ -901,4 +901,7 @@ def _main(**kwargs):
 
 if __name__ == "__main__":
     import fire
+    import time
+    start_time = time.time()
     fire.Fire(_main)
+    print(f"\aTime taken: {time.time() - start_time:.2f} seconds, or {(time.time() - start_time) / 60:.2f} minutes, or {(time.time() - start_time) / 3600:.2f} hours.\a")
