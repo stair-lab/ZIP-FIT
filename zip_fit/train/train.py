@@ -39,7 +39,7 @@ def tokenize_and_group_texts_via_blocks(
     examples: Dict[str, List[str]],  # since Batched=True gives a list of strings, note: a block size will be 1 sequences, a concat of tokenized rows from the data set! 
     tokenizer: AutoTokenizer,
     block_size: int,
-) -> Dict[str, List[List[int]]]:
+) -> Dict[str, "torch.Tensor"]:
     """
     Tokenizes a batch of raw text examples and groups the tokens into fixed-size blocks.
 
@@ -71,7 +71,7 @@ def tokenize_and_group_texts_via_blocks(
 
       6. **Label Creation:**  
          For language modeling tasks, the function creates a 'labels' field that is an exact copy of the 'input_ids'
-         blocks.
+         blocks. Both fields are converted into PyTorch tensors with dtype torch.long.
 
     **Note on the attention mask field:**  
     The returned dictionary does not include an `attention_mask` field. Including an attention mask with a value of `None` 
@@ -81,7 +81,7 @@ def tokenize_and_group_texts_via_blocks(
         examples (Dict[str, List[str]]):
             A dictionary representing a batch of examples from the dataset. It must contain a key 'text'
             whose value is a list of strings (one per example).
-        tokenizer (Any):
+        tokenizer (AutoTokenizer):
             A tokenizer instance (e.g., from Hugging Face's transformers) that can process a single text string.
             The tokenizer should return a dictionary containing at least the key 'input_ids' when called with a text,
             and it must have attributes `bos_token_id` (which may be None) and `eos_token_id`.
@@ -89,10 +89,11 @@ def tokenize_and_group_texts_via_blocks(
             The desired number of tokens per block (for example, 1024 or 4096).
 
     Returns:
-        Dict[str, List[List[int]]]:
+        Dict[str, torch.Tensor]:
             A dictionary where:
-              - 'input_ids' maps to a list of token blocks, each block being a list of token IDs of length `block_size`.
-              - 'labels' maps to a copy of the 'input_ids' blocks.
+              - 'input_ids' maps to a PyTorch tensor of token blocks, each block being a list of token IDs of length `block_size`
+                and of dtype torch.long.
+              - 'labels' maps to a copy of the 'input_ids' tensor.
             
             **Note:** No `attention_mask` is included in the returned dictionary.
     """
@@ -143,9 +144,11 @@ def tokenize_and_group_texts_via_blocks(
     # -------------------------------------------------------------------------
     # Step 6: Create labels for language modeling tasks.
     # It is common for language models to use the input_ids as labels.
-    result: Dict[str, List[List[int]]] = {
-        "input_ids": all_token_blocks,
-        "labels": all_token_blocks.copy(),
+    # Convert the list of token blocks into PyTorch tensors with dtype=torch.long.
+    import torch
+    result: Dict[str, torch.Tensor] = {
+        "input_ids": torch.tensor(all_token_blocks, dtype=torch.long),
+        "labels": torch.tensor(all_token_blocks.copy(), dtype=torch.long),
     }
 
     return result
@@ -173,7 +176,9 @@ def main_train(config: dict = {}) -> str:
     # ------------------------------
     # Set device and seed.
     # ------------------------------
-    os.environ['CUDA_VISIBLE_DEVICES'] = config.get('cuda_visible_devices', '6')  # choose GPU
+    # export CUDA_VISIBLE_DEVICES=5; python ~/ZIP-FIT/zip_fit/train/train.py
+    # export CUDA_VISIBLE_DEVICES=7; python ~/ZIP-FIT/zip_fit/train/train.py
+    # os.environ['CUDA_VISIBLE_DEVICES'] = config.get('cuda_visible_devices', '6')  # choose GPU
     seed: int = config.get('seed', 42)
     seed_everything(seed)
 
@@ -192,12 +197,17 @@ def main_train(config: dict = {}) -> str:
     # ------------------------------
     # Load model and tokenizer.
     # ------------------------------
-    model_name: str = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
-    model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name)
+    # model_name: str = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
+    model_name: str = config.get('model_name', 'google/gemma-2-2b')
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name).to(device) if 'gemma-2' not in model_name else AutoModelForCausalLM.from_pretrained(model_name, attn_implementation='eager').to(device)
     tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(model_name)
     today: str = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
     # Use a custom final model name if provided; otherwise use a default.
+    final_model_name: str = config.get('final_model_name', f'UDACA/{model_name.replace("/", "-")}pn-v3-lean4-train-on-validation')
     final_model_name: str = config.get('final_model_name', f'UDACA/{model_name.replace("/", "-")}pn-v3-lean4-train-on-test')
+    block_size: int = config.get('block_size', 1024)
+    print(f'{block_size=}')
 
     # ------------------------------
     # Prepare datasets.
@@ -210,6 +220,7 @@ def main_train(config: dict = {}) -> str:
         return f'informal statement {nl_stmt}'
 
     # Load datasets with torch format.
+    ds_train: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="validation").with_format('torch')
     ds_train: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
     ds_eval: Dataset  = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
     ds_tf_eval: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
@@ -227,7 +238,7 @@ def main_train(config: dict = {}) -> str:
     )
     # Tokenize and group text for ds_train.
     ds_train = ds_train.map(
-        lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=1024),
+        lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=block_size),
         batched=True,
         remove_columns=ds_train.column_names, 
         num_proc=24,
@@ -245,7 +256,7 @@ def main_train(config: dict = {}) -> str:
         num_proc=24,
     )
     ds_eval = ds_eval.map(
-        lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=1024),
+        lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=block_size),
         batched=True,
         remove_columns=ds_eval.column_names,
         num_proc=24,
@@ -276,22 +287,23 @@ def main_train(config: dict = {}) -> str:
         evaluation_strategy=config.get('evaluation_strategy', "steps"),  # Evaluate every few steps.
         eval_steps=config.get('eval_steps', 25),             # Evaluate after every 25 steps.
         logging_steps=config.get('logging_steps', 25),       # Log metrics every 25 steps.
-        per_device_train_batch_size=config.get('per_device_train_batch_size', 4),
-        gradient_accumulation_steps=config.get('gradient_accumulation_steps', 2),
+        per_device_train_batch_size=config.get('per_device_train_batch_size', 2),
+        gradient_accumulation_steps=config.get('gradient_accumulation_steps', 4),
         save_steps=config.get('save_steps', 100),            # Save a checkpoint every 100 steps.
         save_total_limit=config.get('save_total_limit', 1),    # Keep only the most recent checkpoint.
         save_strategy=config.get('save_strategy', 'steps'),
         bf16=torch.cuda.is_bf16_supported(),               # Use bf16 if supported.
         fp16=not torch.cuda.is_bf16_supported(),            # Otherwise, use fp16.
-        optim=config.get('optim', 'adamw_torch'),
+        # optim=config.get('optim', 'adamw_torch'),
+        optim=config.get('optim', 'paged_adamw_32bit'),
         learning_rate=config.get('learning_rate', 1e-6),
         weight_decay=config.get('weight_decay', 1e-4),
-        gradient_checkpointing=config.get('gradient_checkpointing', True),
+        gradient_checkpointing=config.get('gradient_checkpointing', True), # careful, this can give issues depedning on hardware
         lr_scheduler_type=config.get('lr_scheduler_type', 'constant_with_warmup'),
         warmup_ratio=config.get('warmup_ratio', 0.05),
         seed=seed,
         data_seed=config.get('data_seed', seed),
-        torch_compile=True,
+        # torch_compile=True,
         # Hub push parameters.
         push_to_hub=True,
         hub_model_id=final_model_name,
