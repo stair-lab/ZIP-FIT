@@ -1,0 +1,587 @@
+Metadata-Version: 2.2
+Name: zip-fit
+Version: 1.0.8
+Summary: Data Selection via Compression-Based Alignment
+Author-email: Elyas Obbad <eobbad@stanford.edu>
+License: 
+                                         Apache License
+                                   Version 2.0, January 2004
+                                http://www.apache.org/licenses/
+        
+           TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+        
+           1. Definitions.
+        
+              "License" shall mean the terms and conditions for use, reproduction,
+              and distribution as defined by Sections 1 through 9 of this document.
+        
+              "Licensor" shall mean the copyright owner or entity authorized by
+              the copyright owner that is granting the License.
+        
+              "Legal Entity" shall mean the union of the acting entity and all
+              other entities that control, are controlled by, or are under common
+              control with that entity. For the purposes of this definition,
+              "control" means (i) the power, direct or indirect, to cause the
+              direction or management of such entity, whether by contract or
+              otherwise, or (ii) ownership of fifty percent (50%) or more of the
+              outstanding shares, or (iii) beneficial ownership of such entity.
+        
+              "You" (or "Your") shall mean an individual or Legal Entity
+              exercising permissions granted by this License.
+        
+              "Source" form shall mean the preferred form for making modifications,
+              including but not limited to software source code, documentation
+              source, and configuration files.
+        
+              "Object" form shall mean any form resulting from mechanical
+              transformation or translation of a Source form, including but
+              not limited to compiled object code, generated documentation,
+              and conversions to other media types.
+        
+              "Work" shall mean the work of authorship, whether in Source or
+              Object form, made available under the License, as indicated by a
+              copyright notice that is included in or attached to the work
+              (an example is provided in the Appendix below).
+        
+              "Derivative Works" shall mean any work, whether in Source or Object
+              form, that is based on (or derived from) the Work and for which the
+              editorial revisions, annotations, elaborations, or other modifications
+              represent, as a whole, an original work of authorship. For the purposes
+              of this License, Derivative Works shall not include works that remain
+              separable from, or merely link (or bind by name) to the interfaces of,
+              the Work and Derivative Works thereof.
+        
+              "Contribution" shall mean any work of authorship, including
+              the original version of the Work and any modifications or additions
+              to that Work or Derivative Works thereof, that is intentionally
+              submitted to Licensor for inclusion in the Work by the copyright owner
+              or by an individual or Legal Entity authorized to submit on behalf of
+              the copyright owner. For the purposes of this definition, "submitted"
+              means any form of electronic, verbal, or written communication sent
+              to the Licensor or its representatives, including but not limited to
+              communication on electronic mailing lists, source code control systems,
+              and issue tracking systems that are managed by, or on behalf of, the
+              Licensor for the purpose of discussing and improving the Work, but
+              excluding communication that is conspicuously marked or otherwise
+              designated in writing by the copyright owner as "Not a Contribution."
+        
+              "Contributor" shall mean Licensor and any individual or Legal Entity
+              on behalf of whom a Contribution has been received by Licensor and
+              subsequently incorporated within the Work.
+        
+           2. Grant of Copyright License. Subject to the terms and conditions of
+              this License, each Contributor hereby grants to You a perpetual,
+              worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+              copyright license to reproduce, prepare Derivative Works of,
+              publicly display, publicly perform, sublicense, and distribute the
+              Work and such Derivative Works in Source or Object form.
+        
+           3. Grant of Patent License. Subject to the terms and conditions of
+              this License, each Contributor hereby grants to You a perpetual,
+              worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+              (except as stated in this section) patent license to make, have made,
+              use, offer to sell, sell, import, and otherwise transfer the Work,
+              where such license applies only to those patent claims licensable
+              by such Contributor that are necessarily infringed by their
+              Contribution(s) alone or by combination of their Contribution(s)
+              with the Work to which such Contribution(s) was submitted. If You
+              institute patent litigation against any entity (including a
+              cross-claim or counterclaim in a lawsuit) alleging that the Work
+              or a Contribution incorporated within the Work constitutes direct
+              or contributory patent infringement, then any patent licenses
+              granted to You under this License for that Work shall terminate
+              as of the date such litigation is filed.
+        
+           4. Redistribution. You may reproduce and distribute copies of the
+              Work or Derivative Works thereof in any medium, with or without
+              modifications, and in Source or Object form, provided that You
+              meet the following conditions:
+        
+              (a) You must give any other recipients of the Work or
+                  Derivative Works a copy of this License; and
+        
+              (b) You must cause any modified files to carry prominent notices
+                  stating that You changed the files; and
+        
+              (c) You must retain, in the Source form of any Derivative Works
+                  that You distribute, all copyright, patent, trademark, and
+                  attribution notices from the Source form of the Work,
+                  excluding those notices that do not pertain to any part of
+                  the Derivative Works; and
+        
+              (d) If the Work includes a "NOTICE" text file as part of its
+                  distribution, then any Derivative Works that You distribute must
+                  include a readable copy of the attribution notices contained
+                  within such NOTICE file, excluding those notices that do not
+                  pertain to any part of the Derivative Works, in at least one
+                  of the following places: within a NOTICE text file distributed
+                  as part of the Derivative Works; within the Source form or
+                  documentation, if provided along with the Derivative Works; or,
+                  within a display generated by the Derivative Works, if and
+                  wherever such third-party notices normally appear. The contents
+                  of the NOTICE file are for informational purposes only and
+                  do not modify the License. You may add Your own attribution
+                  notices within Derivative Works that You distribute, alongside
+                  or as an addendum to the NOTICE text from the Work, provided
+                  that such additional attribution notices cannot be construed
+                  as modifying the License.
+        
+              You may add Your own copyright statement to Your modifications and
+              may provide additional or different license terms and conditions
+              for use, reproduction, or distribution of Your modifications, or
+              for any such Derivative Works as a whole, provided Your use,
+              reproduction, and distribution of the Work otherwise complies with
+              the conditions stated in this License.
+        
+           5. Submission of Contributions. Unless You explicitly state otherwise,
+              any Contribution intentionally submitted for inclusion in the Work
+              by You to the Licensor shall be under the terms and conditions of
+              this License, without any additional terms or conditions.
+              Notwithstanding the above, nothing herein shall supersede or modify
+              the terms of any separate license agreement you may have executed
+              with Licensor regarding such Contributions.
+        
+           6. Trademarks. This License does not grant permission to use the trade
+              names, trademarks, service marks, or product names of the Licensor,
+              except as required for reasonable and customary use in describing the
+              origin of the Work and reproducing the content of the NOTICE file.
+        
+           7. Disclaimer of Warranty. Unless required by applicable law or
+              agreed to in writing, Licensor provides the Work (and each
+              Contributor provides its Contributions) on an "AS IS" BASIS,
+              WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+              implied, including, without limitation, any warranties or conditions
+              of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+              PARTICULAR PURPOSE. You are solely responsible for determining the
+              appropriateness of using or redistributing the Work and assume any
+              risks associated with Your exercise of permissions under this License.
+        
+           8. Limitation of Liability. In no event and under no legal theory,
+              whether in tort (including negligence), contract, or otherwise,
+              unless required by applicable law (such as deliberate and grossly
+              negligent acts) or agreed to in writing, shall any Contributor be
+              liable to You for damages, including any direct, indirect, special,
+              incidental, or consequential damages of any character arising as a
+              result of this License or out of the use or inability to use the
+              Work (including but not limited to damages for loss of goodwill,
+              work stoppage, computer failure or malfunction, or any and all
+              other commercial damages or losses), even if such Contributor
+              has been advised of the possibility of such damages.
+        
+           9. Accepting Warranty or Additional Liability. While redistributing
+              the Work or Derivative Works thereof, You may choose to offer,
+              and charge a fee for, acceptance of support, warranty, indemnity,
+              or other liability obligations and/or rights consistent with this
+              License. However, in accepting such obligations, You may act only
+              on Your own behalf and on Your sole responsibility, not on behalf
+              of any other Contributor, and only if You agree to indemnify,
+              defend, and hold each Contributor harmless for any liability
+              incurred by, or claims asserted against, such Contributor by reason
+              of your accepting any such warranty or additional liability.
+        
+           END OF TERMS AND CONDITIONS
+        
+           APPENDIX: How to apply the Apache License to your work.
+        
+              To apply the Apache License to your work, attach the following
+              boilerplate notice, with the fields enclosed by brackets "[]"
+              replaced with your own identifying information. (Don't include
+              the brackets!)  The text should be enclosed in the appropriate
+              comment syntax for the file format. We also recommend that a
+              file or class name and description of purpose be included on the
+              same "printed page" as the copyright notice for easier
+              identification within third-party archives.
+        
+           Copyright [yyyy] [name of copyright owner]
+        
+           Licensed under the Apache License, Version 2.0 (the "License");
+           you may not use this file except in compliance with the License.
+           You may obtain a copy of the License at
+        
+               http://www.apache.org/licenses/LICENSE-2.0
+        
+           Unless required by applicable law or agreed to in writing, software
+           distributed under the License is distributed on an "AS IS" BASIS,
+           WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+           See the License for the specific language governing permissions and
+           limitations under the License.
+        
+Keywords: data selection,compression,zip-fit,nlp,language models
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: lz4>=3.1.10
+Requires-Dist: datasets>=1.17.0
+Requires-Dist: networkx>=2.5
+Requires-Dist: scipy
+Requires-Dist: scikit-learn
+Requires-Dist: pandas
+Requires-Dist: requests
+Requires-Dist: aiohttp
+Requires-Dist: matplotlib
+Requires-Dist: fire
+Requires-Dist: Levenshtein
+Requires-Dist: seaborn
+Requires-Dist: wandb
+Requires-Dist: twine
+Requires-Dist: nvidia-htop
+Requires-Dist: protobuf
+Requires-Dist: torch
+Requires-Dist: torchvision
+Requires-Dist: trl
+Requires-Dist: transformers
+Requires-Dist: accelerate>=0.26.0
+Requires-Dist: peft
+Requires-Dist: bitsandbytes
+Requires-Dist: einops
+Requires-Dist: sentencepiece
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: flake8>=3.9; extra == "dev"
+Requires-Dist: black>=21.0; extra == "dev"
+Requires-Dist: mypy>=0.910; extra == "dev"
+
+# Data Selection for Language Models via Compression
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![arXiv](https://img.shields.io/badge/arXiv-2305.10429-00ff00.svg)](https://arxiv.org/abs/2410.18194)
+
+This repository hosts the [ZIP-FIT](https://arxiv.org/abs/2410.18194) data selection framework, designed to effectively and efficiently select relevant training data for language models from any data source based on a specified target dataset.
+
+ZIP-FIT is optimized for:
+- Rapid, large-scale data selection from extensive raw text datasets.
+- Identifying data that closely aligns with the distribution of a given target dataset (e.g., domain-specific data, HumanEval, etc.).
+
+Compute needed:
+- 1 CPU node
+
+![ZIP-FIT figure](image.png)
+
+## Quickstart
+
+Install with pip:
+```
+pip install zip-fit
+```
+
+To select data, simply initialize a `ZIPFIT` object and call the following functions:
+```python
+from zip_fit import ZIPFIT
+
+source_dataset = <path>
+target_dataset = <path>
+top_k = 10000
+
+zipfit = ZIPFIT(source_dataset, target_dataset, k=top_k, output_file="top_k_sequences.jsonl")
+zipfit.run()
+```
+Executing this process will generate a jsonl file named 'top_k_sequences.jsonl', containing 10,000 documents. For optimal performance, it is recommended to use uncompressed jsonl files stored on local file storage for all data paths, and to utilize as many CPU cores as possible. You can provide custom functions for reading the data paths and extracting the text field from each example using the {source,target}_load_dataset_fn and {source,target}_parse_example_fn parameters in the constructor.
+ 
+
+## Examples
+
+HuggingFace datasets can also be used in either `source_dataset` or `target_dataset`. However, please note that streaming a large raw dataset directly may result in slow performance; this approach is better suited for target datasets:
+
+```python
+from zip_fit import ZIPFIT
+from datasets import load_dataset
+
+source_dataset = f'/path/to/source.jsonl'
+target_dataset = 'openai/openai_humaneval'
+
+# Define the function to load the target dataset
+def target_load_dataset_fn(dataset):
+    ds = load_dataset(dataset, split='test', trust_remote_code=True)
+    return ds
+
+# Define the function to parse examples from the target dataset
+def target_parse_example_fn(ex):
+    text = f"Problem description: {ex['prompt']} \nCanonical solution: {ex['canonical_solution']}"
+    return text
+
+# Create an instance of ZIPFIT
+zip_fit_instance = ZIPFIT(
+    source_dataset=source_dataset,
+    target_dataset=target_dataset,
+    target_load_fn=target_load_dataset_fn,
+    target_parse_fn=target_parse_example_fn,
+    k=100000,  
+    output_file="top_k_sequences.jsonl",
+    compression_algorithm='gzip'  # Change to 'lz4' if desired
+)
+
+# Run the ZIPFIT process
+zip_fit_instance.run()
+```
+You can specify different compression algorithms. The ZIP-FIT paper uses gzip, however other compression algorithms like lz4 are faster. 
+
+## Dev Install: ZIP-FIT + PyPantograph + Mathlib4 + Lean Setup
+Below are comprehensive instructions for setting up everything in a **conda** environment named `zip_fit`, ensuring that:
+
+- **Lean** is installed (via elan),
+- **PyPantograph** is installed (via Poetry) and matches the same Lean version,
+- **Mathlib4** is checked out at the corresponding Lean version,
+- **ZIP-FIT** and optional vLLM are also installed, all in one place.
+
+## 1. Create & Activate the `zip_fit` Conda Environment
+
+```bash
+conda create -n zip_fit python=3.11
+conda activate zip_fit
+conda activate zip_fit
+```
+
+### Install ZIP-FIT
+
+If you have the ZIP-FIT repo at `~/ZIP-FIT`, install it in editable mode:
+
+```bash
+git clone git@github.com:stair-lab/ZIP-FIT.git
+cd ZIP-FIT
+git fetch origin
+git branch -a
+git checkout -b bm_dev origin/bm_dev
+git branch -vv
+
+pip install -e ~/ZIP-FIT
+```
+
+## 2. Install vLLM + EleutherAI Harness
+
+If you want vLLM for flash attention, you can install it via `lm_eval[vllm]`:
+
+```bash
+pip install lm_eval[vllm]
+# If you find version issues, pin it:
+pip install vllm==0.6.4.post1
+
+pip install antlr4-python3-runtime==4.11
+
+# Quick check
+pip list | grep lm_eval
+pip list | grep vllm
+pip list | grep antlr4
+```
+
+## 3. Install Lean (Via `elan`)
+
+```bash
+curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
+
+# If ~/.bashrc doesn't have ~/.elan, add it:
+cat ~/.bashrc | grep .elan
+# If no output, do:
+export PATH="$HOME/.elan/bin:$PATH"
+echo 'export PATH="$HOME/.elan/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# Check versions
+elan --version
+lean --version
+lake --version
+```
+
+**Note**: This sets up Lean for your user via elan, which will manage multiple Lean versions as needed.
+
+## 4. Clone & Prepare PyPantograph
+Note: **you need Lean4, Mathlib4 and PyPantograph/Pantograph to all agree on Lean version** eg **4.15.0** at the time of this writing.
+
+```bash
+git clone --recurse-submodules git@github.com:lenianiva/PyPantograph.git
+cd PyPantograph
+git submodule update --init --recursive
+git pull
+```
+
+### 4A. Ensure PyPantograph & Submodule Are Lean 4.15.0
+
+PyPantograph has a `src/` submodule that also pins a Lean version. Confirm it’s `4.15.0`:
+
+```bash
+cd PyPantograph
+cat src/lean-toolchain
+# Expect: leanprover/lean4:v4.15.0
+```
+
+If it’s correct, proceed. If not, pull the latest or check out the branch that uses 4.15.0:
+
+```bash
+git pull
+git submodule update --init --recursive
+# Then re-check src/lean-toolchain
+cat src/lean-toolchain
+```
+
+Test PyPantograph server:
+```bash
+python -m pantograph.server
+```
+
+## 5. Install Poetry
+
+Check if you have poetry:
+```bash
+poetry
+```
+
+### (Optional)
+
+We’ll install Poetry **inside** the `zip_fit` environment (so we don’t leave conda):
+
+```bash
+pip install poetry
+which poetry
+poetry --version
+```
+If you prefer a separate Python env just for Poetry, see the commented lines below, but typically you can keep it simple by installing Poetry in `zip_fit`.
+
+#### Install Poetry in it's seperate python env outside your current env
+Remark: Installing Poetry in a separate Python environment prevents conflicts between Poetry’s dependencies and those of your Conda or project environments, ensuring a stable and isolated package management experience.
+
+5. Create a Separate Python Env Just for Poetry
+From any shell (you can leave zip_fit or open a new terminal):
+
+```bash
+mkdir -p $HOME/.virtualenvs
+export VENV_PATH=$HOME/.virtualenvs/venv_for_poetry
+export PATH="$VENV_PATH/bin:$PATH"
+
+python3 -m venv $VENV_PATH
+$VENV_PATH/bin/pip install -U pip setuptools
+$VENV_PATH/bin/pip install poetry
+
+poetry
+
+# Make it permanent
+cat ~/.bashrc | grep poetry
+echo 'export VENV_PATH=$HOME/.virtualenvs/venv_for_poetry' >> ~/.bashrc
+echo 'export PATH="$VENV_PATH/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+Note: After this, which poetry may show `$HOME/.virtualenvs/venv_for_poetry/bin/poetry`.
+If it hijacks your shell’s Python, you can open a new shell and re-activate zip_fit when needed.
+
+## 6. Install PyPantograph into `zip_fit`
+
+1. **Stay** in the [`PyPantograph](https://github.com/stanford-centaur/PyPantograph)` folder (and in the `zip_fit` env).  
+2. **Configure Poetry** so it doesn’t create an extra venv:
+   ```bash
+   cd ~/PyPantograph
+   poetry config virtualenvs.create false
+   ```
+3. **Install**:
+   ```bash
+   poetry build
+   poetry install
+   ```
+4. **Check** you’re still in `zip_fit`:
+   ```bash
+   which python
+   # Should be something like ~/miniconda/envs/zip_fit/bin/python
+   ```
+5. **Verify**:
+   ```bash
+   poetry show
+   # or
+   pip list | grep pantograph
+   ```
+
+## 7. Ensure Mathlib4 Matches Lean 4.15.0
+
+PyPantograph’s submodule is pinned to Lean 4.15.0. If you want to import `Mathlib` inside PyPantograph, your local Mathlib4 **must** be the same Lean version.
+
+1. **Clone or go to** your `mathlib4` folder:
+   ```bash
+   cd ~
+   git clone https://github.com/leanprover-community/mathlib4.git
+   cd mathlib4
+   ```
+2. **Check out** the branch for Lean 4.15.0:
+   ```bash
+   git fetch --all
+   git checkout releases/v4.15.0
+   cat lean-toolchain
+   # → leanprover/lean4:v4.15.0
+   ```
+3. ** Speed Up** with cache:
+   ```bash
+   lake exe cache get
+   ```
+   This fetches pre-built .olean files for that commit if they exist.
+
+4. (*optional*) If needed, do a **local build**:
+   ```bash
+   lake clean
+   rm -rf .lake/build
+   lake update
+   lake build
+   ```
+
+Now, Mathlib4 is on Lean 4.15.0, matching PyPantograph.
+
+## 8. Final Verification
+
+### 8A. Check Lean Versions
+
+```bash
+poetry show
+# or
+pip list | grep pantograph
+
+lean --version
+# Should say 4.15.0 if you're in a folder overridden by elan or if conda isn't overshadowing anything.
+
+cd ~/mathlib4
+cat lean-toolchain
+# → 4.15.0
+
+cd ~/PyPantograph/src
+cat lean-toolchain
+# → 4.15.0
+
+elan --version
+lean --version
+lake --version
+
+python -m pantograph.server
+```
+
+All must match for a successful import.
+
+### 8B. Minimal PyPantograph Test
+
+```bash
+cd ~
+python -c "from pantograph import Server;import os; \
+           s = Server(imports=['Mathlib'], project_path=os.path.expanduser('~/mathlib4')); \
+           print('Pantograph server started!')"
+
+python -m pantograph.server
+```
+- If you see **“Pantograph server started!”** and no “invalid header” errors, you’re good!
+
+## 9. (Optional) Re-check ZIP-FIT
+
+Return to your ZIP-FIT repo:
+
+```bash
+cd ~/ZIP-FIT
+pip install -e .
+
+python -c "import zip_fit; print('zip_fit imported successfully!')"
+```
+ref, o1 pro:https://chatgpt.com/g/g-p-6789a51d52308191917d7bc04225a117-zip-fit/c/67996aa2-4d28-8001-a095-b54f4555676a?model=o1-pro
+
+## Citation Information
+Paper: <https://arxiv.org/abs/2410.18194>
+```
+@article{obbad2024zipfit,
+  author = {Elyas Obbad and Iddah Mlauzi and Brando Miranda and Rylan Schaeffer and Kamal Obbad and Suhana Bedi and Sanmi Koyejo},
+  title = {ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment},
+  year = {2024},
+  journal = {arXiv preprint arXiv:2410.18194},
+}
+```
