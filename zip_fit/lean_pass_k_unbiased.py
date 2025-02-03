@@ -471,6 +471,9 @@ def run_pass_k_eval(
     # Finally, average pass@k across all prompts
     print(f'{len(pass_vals)=}') if debug else None
     # st()
+    import gc
+    del llm
+    gc.collect()
     return float(np.mean(pass_vals)) if pass_vals else 0.0
 
 
