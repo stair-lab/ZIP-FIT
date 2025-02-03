@@ -2,6 +2,7 @@
 
 import os
 import random
+from tqdm import tqdm
 import torch
 from transformers import (
     AutoTokenizer,
@@ -261,7 +262,8 @@ class TfaCallback(TrainerCallback):
             device=device
         )
         log_dict = {f"tfa/{label}": tfa_score, "global_step": current_step}
-        print(log_dict)
+        # print(log_dict)
+        tqdm.write(str(log_dict))
         # print(f"[TfaCallback] on_{label} => TFA = {tfa_score:.4f} on {n_samples} random samples.")
         wandb.log(log_dict)
 
