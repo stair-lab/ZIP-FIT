@@ -199,11 +199,11 @@ def main_train(config: dict = {}) -> str:
     # ------------------------------
     # Load model and tokenizer.
     # ------------------------------
-    model_name: str = config.get('model_name', 'gpt2')
+    # model_name: str = config.get('model_name', 'gpt2')
     # model_name: str = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
     # model_name: str = config.get('model_name', 'google/gemma-2-2b')
     # model_name: str = config.get('model_name', 'google/internlm2-math-plus-1_8b')
-    # model_name: str = config.get('model_name', 'Meta-Llama-3-8B')
+    model_name: str = config.get('model_name', 'Meta-Llama-3-8B')
     # model_name: str = config.get('model_name', 'google/codegemma-2b')
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name).to(device) if 'gemma-2' not in model_name else AutoModelForCausalLM.from_pretrained(model_name, attn_implementation='eager').to(device)
@@ -213,6 +213,9 @@ def main_train(config: dict = {}) -> str:
     # Use a custom final model name if provided; otherwise use a default.
     final_model_name: str = config.get('final_model_name', f'UDACA/{model_name.replace("/", "-")}-pn-v3-lean4-train-on-validation-{today}')
     # final_model_name: str = config.get('final_model_name', f'UDACA/{model_name.replace("/", "-")}-pn-v3-lean4-train-on-test-{today}')
+
+    final_model_name: str = config.get('final_model_name', f'AI4M/{model_name.replace("/", "-")}-pn-v3-lean4-train-on-validation-{today}')
+    
     block_size: int = config.get('block_size', 1024)
     print(f'{block_size=}')
 
@@ -227,8 +230,20 @@ def main_train(config: dict = {}) -> str:
         return f'informal statement {nl_stmt}'
 
     # Load datasets with torch format.
-    ds_train: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="validation").with_format('torch')
+    # Sanity Checks
+    # ds_train: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="validation").with_format('torch')
     # ds_train: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
+
+    # Lean4AI
+    """
+export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project lean4ai-llama3-8b-runs --num_train_epochs 3 --model_name meta-llama/Meta-Llama-3-8B 
+    """
+    ds_train: Dataset = load_dataset("AI4M/mma-dataset", split="train").with_format('torch')
+    # ds_train: Dataset = load_dataset("AI4M/stateInfoInformalizationBig", split="train").with_format('torch')
+    # ds_train: Dataset = load_dataset("AI4M/regexInformalizationData", split="train").with_format('torch')
+    # ds_train: Dataset = load_dataset("AI4M/gpt4-more", split="train").with_format('torch')
+
+    # Evals
     ds_eval: Dataset  = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
     ds_tf_eval: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
 
@@ -292,7 +307,7 @@ def main_train(config: dict = {}) -> str:
         # max_steps=2, # for debugging
         output_dir=str(output_dir),  # Main output directory.
         do_train=True,
-        num_train_epochs=config.get('num_train_epochs', 1),  # Total training epochs.
+        num_train_epochs=config.get('num_train_epochs', 3),  # Total training epochs.
         do_eval=True,
         eval_on_start=config.get('eval_on_start', True),     # Evaluate before training starts.
         evaluation_strategy=config.get('evaluation_strategy', "steps"),  # Evaluate every few steps.
@@ -511,8 +526,9 @@ def _main(**kwargs):
     tmux_sess_num = None
     kwargs = kwargs | {'today': today, 'tmux_sess_num': tmux_sess_num, 'hostname': gethostname()}
     run_name = f'{kwargs}' 
+    project: str = kwargs.get('project', 'zip-fit-train')
     # run = wandb.init(mode=kwargs.get('mode', 'online'), project="zip-fit-train", name=run_name, save_code=True, config=kwargs)
-    run = wandb.init(mode=kwargs.get('mode', 'dryrun'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
+    run = wandb.init(mode=kwargs.get('mode', 'dryrun'), project=project, name=run_name, save_code=True, config=kwargs)
     wandb.save(__file__) # save current code now, don't wait to wandb.finish, also useful: wandb.save("*.py") # upload all .py files in current directory
     print(f'Kwargs to run:\n{kwargs}')
     # main(kwargs)
