@@ -206,7 +206,8 @@ def main_train(config: dict = {}) -> str:
     model_name: str = config.get('model_name', 'Meta-Llama-3-8B')
     # model_name: str = config.get('model_name', 'google/codegemma-2b')
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name).to(device) if 'gemma-2' not in model_name else AutoModelForCausalLM.from_pretrained(model_name, attn_implementation='eager').to(device)
+    # model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name).to(device) if 'gemma-2' not in model_name else AutoModelForCausalLM.from_pretrained(model_name, attn_implementation='eager').to(device)
+    model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name).to(device)
     tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id else tokenizer.eos_token_id
     today: str = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
@@ -229,34 +230,48 @@ def main_train(config: dict = {}) -> str:
         # Format used for less (see provided URL)
         return f'informal statement {nl_stmt}'
 
+
     # Load datasets with torch format.
     # Sanity Checks
-    # ds_train: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="validation").with_format('torch')
+    """
+export CUDA_VISIBLE_DEVICES=4; python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project zip-fit-pn-sanity --num_train_epochs 3 --model_name meta-llama/Meta-Llama-3-8B 
+    """
     # ds_train: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
+    # ds_train: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="validation").with_format('torch')
+
+    # ds_eval: Dataset  = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
+    # ds_tf_eval: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
 
     # Lean4AI
     """
-export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project lean4ai-llama3-8b-runs --num_train_epochs 3 --model_name meta-llama/Meta-Llama-3-8B 
+export CUDA_VISIBLE_DEVICES=4; python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project lean4ai-llama3-8b-runs --num_train_epochs 3 --model_name meta-llama/Meta-Llama-3-8B 
     """
-    ds_train: Dataset = load_dataset("AI4M/mma-dataset", split="train").with_format('torch')
+    # ds_train: Dataset = load_dataset("AI4M/mma-dataset", split="train").with_format('torch')
     # ds_train: Dataset = load_dataset("AI4M/stateInfoInformalizationBig", split="train").with_format('torch')
     # ds_train: Dataset = load_dataset("AI4M/regexInformalizationData", split="train").with_format('torch')
     # ds_train: Dataset = load_dataset("AI4M/gpt4-more", split="train").with_format('torch')
+    # ds_train: Dataset = load_dataset("AI4M/gpt4-more", split="train").with_format('torch')
+
+    """
+conda activate zip_fit
+export CUDA_VISIBLE_DEVICES=4; python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name google/gemma-2-2b 
+    """
+    def my_prompt_format(question: str, answer: str, final_answer: str)-> str:
+        return f'question: {question}\nanswer: {answer}\n### {final_answer}'
+    # Path to your saved JSON file
+    # ds_train = load_dataset("json", data_files=os.path.expanduser("~/data/synthetic_data/uncompiled_dspy/syndata_100_2025_m02_d05_t18h_29m_01s.json"))
+    ds_train = load_dataset("json", data_files=os.path.expanduser("~/data/synthetic_data/uncompiled_dspy/syndata_18612_2025_m02_d05_t18h_38m_11s.json"))
 
     # Evals
-    ds_eval: Dataset  = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
-    ds_tf_eval: Dataset = load_dataset("UDACA/proofnet-v3-lean4", split="test").with_format('torch')
+    ds_eval: Dataset  = load_dataset("openai/gsm8k", split="test").with_format('torch')
+    ds_tf_eval: Dataset = load_dataset("openai/gsm8k", split="test").with_format('torch')
 
     # Create a new "text" field for tokenized datasets by concatenating formatted prompt and formal statement.
     ds_train = ds_train.map(
-        lambda batch: {
-            # Zip together the columns so we iterate over examples.
-            "text": [my_prompt_format(nl) + formal 
-                     for nl, formal in zip(batch["nl_statement"], batch["formal_statement"])]
-        },
+        lambda batch: {"text": [my_prompt_format(nl) + formal for nl, formal in zip(batch["y_grade_school_math_question"], batch["y_grade_school_math_solution"], batch["y_grade_school_math_final_answer"])]},
         batched=True,
         remove_columns=ds_train.column_names,  # Remove all original columns.
-        num_proc=24,
+        num_proc=48,
     )
     print(f'{len(ds_train)=}')
     # Tokenize and group text for ds_train.
@@ -265,35 +280,34 @@ export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/train/train.py --mode dr
         batched=True,
         remove_columns=ds_train.column_names, 
         # remove_columns=['text'], 
-        num_proc=24,
+        num_proc=48,
     )
     print(f'{len(ds_train)=}')
     
     # Do the same for ds_eval.
     ds_eval = ds_eval.map(
-        lambda batch: {
-            # Zip together the columns so we iterate over examples.
-            "text": [my_prompt_format(nl) + formal 
-                     for nl, formal in zip(batch["nl_statement"], batch["formal_statement"])]
-        },
+        # lambda batch: {"text": [my_prompt_format(nl) + formal for nl, formal in zip(batch["nl_statement"], batch["formal_statement"])]},
+        lambda batch: {"text": [f'question: {q}\nanswer: {a}' for q, a in zip(batch["question"], batch["answr"])]},
         batched=True,
         remove_columns=ds_eval.column_names,  # Remove all original columns.
-        num_proc=24,
+        num_proc=48,
     )
     ds_eval = ds_eval.map(
         lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=block_size),
         batched=True,
         remove_columns=ds_eval.column_names,
-        num_proc=24,
+        num_proc=48,
     )
     # For teacher-forced evaluation, retain raw strings by creating 'prompt' and 'gold_response' fields.
     ds_tf_eval = ds_tf_eval.map(
         lambda batch: {
-            'prompt': [my_prompt_format(nl) for nl in batch['nl_statement']],
-            'gold_response': [formal for formal in batch['formal_statement']]
+            # 'prompt': [my_prompt_format(nl) for nl in batch['nl_statement']],
+            # 'gold_response': [formal for formal in batch['formal_statement']]
+            'prompt': [f'question: {q}\nanswer: ' for q in batch['question']],
+            'gold_response': [answer for answer in batch['answer']]
         },
         batched=True,
-        num_proc=24
+        num_proc=48
     )
 
     # ------------------------------
@@ -307,7 +321,8 @@ export CUDA_VISIBLE_DEVICES=3; python ~/ZIP-FIT/zip_fit/train/train.py --mode dr
         # max_steps=2, # for debugging
         output_dir=str(output_dir),  # Main output directory.
         do_train=True,
-        num_train_epochs=config.get('num_train_epochs', 3),  # Total training epochs.
+        # num_train_epochs=config.get('num_train_epochs', 3),  # Lean4AI Total training epochs.
+        num_train_epochs=config.get('num_train_epochs', 10000),  # Total training epochs.
         do_eval=True,
         eval_on_start=config.get('eval_on_start', True),     # Evaluate before training starts.
         evaluation_strategy=config.get('evaluation_strategy', "steps"),  # Evaluate every few steps.
