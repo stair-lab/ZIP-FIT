@@ -180,7 +180,7 @@ def main_train(config: dict = {}) -> str:
     # export CUDA_VISIBLE_DEVICES=5; python ~/ZIP-FIT/zip_fit/train/train.py
     # export CUDA_VISIBLE_DEVICES=7; python ~/ZIP-FIT/zip_fit/train/train.py
     # os.environ['CUDA_VISIBLE_DEVICES'] = config.get('cuda_visible_devices', '1')  # choose GPU
-    os.environ['CUDA_VISIBLE_DEVICES'] = config.get('cuda_visible_devices', '3')  # choose GPU
+    # os.environ['CUDA_VISIBLE_DEVICES'] = config.get('cuda_visible_devices', '3')  # choose GPU
     seed: int = config.get('seed', 42)
     seed_everything(seed)
 
@@ -203,11 +203,11 @@ def main_train(config: dict = {}) -> str:
     # model_name: str = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
     # model_name: str = config.get('model_name', 'google/gemma-2-2b')
     # model_name: str = config.get('model_name', 'google/internlm2-math-plus-1_8b')
-    model_name: str = config.get('model_name', 'Meta-Llama-3-8B')
+    model_name: str = config.get('model_name', 'meta-llama/Meta-Llama-3-8B')
     # model_name: str = config.get('model_name', 'google/codegemma-2b')
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name).to(device) if 'gemma-2' not in model_name else AutoModelForCausalLM.from_pretrained(model_name, attn_implementation='eager').to(device)
-    model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name).to(device)
+    torch_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32 
+    model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch_dtype).to(device) if 'gemma-2' not in model_name else AutoModelForCausalLM.from_pretrained(model_name, attn_implementation='eager').to(device)
     tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id else tokenizer.eos_token_id
     today: str = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
@@ -254,21 +254,26 @@ export CUDA_VISIBLE_DEVICES=4; python ~/ZIP-FIT/zip_fit/train/train.py --mode dr
 
     """
 conda activate zip_fit
-export CUDA_VISIBLE_DEVICES=4; python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name google/gemma-2-2b 
+conda activate zip_fit
+export CUDA_VISIBLE_DEVICES=0
+# python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name gpt2
+# python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name google/gemma-2-2b 
+python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name meta-llama/Meta-Llama-3-8B 
     """
     def my_prompt_format(question: str, answer: str, final_answer: str)-> str:
         return f'question: {question}\nanswer: {answer}\n### {final_answer}'
     # Path to your saved JSON file
     # ds_train = load_dataset("json", data_files=os.path.expanduser("~/data/synthetic_data/uncompiled_dspy/syndata_100_2025_m02_d05_t18h_29m_01s.json"))
-    ds_train = load_dataset("json", data_files=os.path.expanduser("~/data/synthetic_data/uncompiled_dspy/syndata_18612_2025_m02_d05_t18h_38m_11s.json"))
+    ds_train = load_dataset("json", split='train', data_files=os.path.expanduser("~/data/synthetic_data/uncompiled_dspy/syndata_18612_2025_m02_d05_t18h_38m_11s.json"))
 
     # Evals
-    ds_eval: Dataset  = load_dataset("openai/gsm8k", split="test").with_format('torch')
-    ds_tf_eval: Dataset = load_dataset("openai/gsm8k", split="test").with_format('torch')
+    ds_eval: Dataset  = load_dataset("openai/gsm8k", 'main', split="test").with_format('torch')
+    ds_tf_eval: Dataset = load_dataset("openai/gsm8k", 'main', split="test").with_format('torch')
 
     # Create a new "text" field for tokenized datasets by concatenating formatted prompt and formal statement.
     ds_train = ds_train.map(
-        lambda batch: {"text": [my_prompt_format(nl) + formal for nl, formal in zip(batch["y_grade_school_math_question"], batch["y_grade_school_math_solution"], batch["y_grade_school_math_final_answer"])]},
+        # lambda batch: {"text": [my_prompt_format(nl) + formal for nl, formal in zip(batch["y_grade_school_math_question"], batch["y_grade_school_math_solution"], batch["y_grade_school_math_final_answer"])]},
+        lambda batch: {"text": [my_prompt_format(q, a, fa) for q, a, fa in zip(batch["y_grade_school_math_question"], batch["y_grade_school_math_solution"], batch["y_grade_school_math_final_answer"])]},
         batched=True,
         remove_columns=ds_train.column_names,  # Remove all original columns.
         num_proc=48,
@@ -287,7 +292,7 @@ export CUDA_VISIBLE_DEVICES=4; python ~/ZIP-FIT/zip_fit/train/train.py --mode dr
     # Do the same for ds_eval.
     ds_eval = ds_eval.map(
         # lambda batch: {"text": [my_prompt_format(nl) + formal for nl, formal in zip(batch["nl_statement"], batch["formal_statement"])]},
-        lambda batch: {"text": [f'question: {q}\nanswer: {a}' for q, a in zip(batch["question"], batch["answr"])]},
+        lambda batch: {"text": [f'question: {q}\nanswer: {a}' for q, a in zip(batch["question"], batch["answer"])]},
         batched=True,
         remove_columns=ds_eval.column_names,  # Remove all original columns.
         num_proc=48,
@@ -322,7 +327,7 @@ export CUDA_VISIBLE_DEVICES=4; python ~/ZIP-FIT/zip_fit/train/train.py --mode dr
         output_dir=str(output_dir),  # Main output directory.
         do_train=True,
         # num_train_epochs=config.get('num_train_epochs', 3),  # Lean4AI Total training epochs.
-        num_train_epochs=config.get('num_train_epochs', 10000),  # Total training epochs.
+        num_train_epochs=config.get('num_train_epochs', 1),  # Total training epochs.
         do_eval=True,
         eval_on_start=config.get('eval_on_start', True),     # Evaluate before training starts.
         evaluation_strategy=config.get('evaluation_strategy', "steps"),  # Evaluate every few steps.
