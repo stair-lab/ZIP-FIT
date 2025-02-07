@@ -200,7 +200,7 @@ def main_train(config: dict = {}) -> str:
     # Load model and tokenizer.
     # ------------------------------
     # model_name: str = config.get('model_name', 'gpt2')
-    # model_name: str = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
+    model_name: str = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
     # model_name: str = config.get('model_name', 'google/gemma-2-2b')
     # model_name: str = config.get('model_name', 'google/internlm2-math-plus-1_8b')
     model_name: str = config.get('model_name', 'meta-llama/Meta-Llama-3-8B')
@@ -255,10 +255,11 @@ export CUDA_VISIBLE_DEVICES=4; python ~/ZIP-FIT/zip_fit/train/train.py --mode dr
     """
 conda activate zip_fit
 conda activate zip_fit
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=4
 # python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name gpt2
+python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name Qwen/Qwen2.5-0.5B
 # python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name google/gemma-2-2b 
-python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name meta-llama/Meta-Llama-3-8B 
+# python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name meta-llama/Meta-Llama-3-8B 
     """
     def my_prompt_format(question: str, answer: str, final_answer: str)-> str:
         return f'question: {question}\nanswer: {answer}\n### {final_answer}'
@@ -410,6 +411,7 @@ python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-u
 
     # Return the final model directory path as a string.
     results = {'final_model_url': final_model_url, 'final_model_dir': final_model_dir}
+    print(f'{results}')
     return results
 
 def main_full_run(config: dict = {}):
