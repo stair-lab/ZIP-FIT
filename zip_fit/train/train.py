@@ -28,11 +28,7 @@ def seed_everything(seed: int = 42):
         hf_set_seed(seed)
     else:
         print("Warning: Transformers is only fully deterministic on GPU")
-    try:
-        from vllm import set_seed as vllm_set_seed
-        vllm_set_seed(seed)
-    except ImportError:
-        print("vLLM not installed or vllm set seed has a bug, skipping vLLM seed setting.")
+    # for vllm seed the object model: https://stackoverflow.com/questions/79467847/how-can-i-ensure-deterministic-text-generation-with-vllm-and-does-it-support-a/79467848#79467848
 
 
 def tokenize_and_group_texts_via_blocks(
@@ -203,7 +199,9 @@ def main_train(config: dict = {}) -> str:
     model_name: str = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
     # model_name: str = config.get('model_name', 'google/gemma-2-2b')
     # model_name: str = config.get('model_name', 'google/internlm2-math-plus-1_8b')
-    model_name: str = config.get('model_name', 'meta-llama/Meta-Llama-3-8B')
+    model_name: str = config.get('model_name', 'meta-llama/Llama-3.2-1B')
+    model_name: str = config.get('model_name', 'meta-llama/Llama-3.2-3B')
+    # model_name: str = config.get('model_name', 'meta-llama/Meta-Llama-3-8B')
     # model_name: str = config.get('model_name', 'google/codegemma-2b')
     device = "cuda" if torch.cuda.is_available() else "cpu"
     torch_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32 
@@ -214,11 +212,17 @@ def main_train(config: dict = {}) -> str:
     # Use a custom final model name if provided; otherwise use a default.
     final_model_name: str = config.get('final_model_name', f'UDACA/{model_name.replace("/", "-")}-pn-v3-lean4-train-on-validation-{today}')
     # final_model_name: str = config.get('final_model_name', f'UDACA/{model_name.replace("/", "-")}-pn-v3-lean4-train-on-test-{today}')
-
     final_model_name: str = config.get('final_model_name', f'AI4M/{model_name.replace("/", "-")}-pn-v3-lean4-train-on-validation-{today}')
     
+    print(f'{model_name=}')
+
     block_size: int = config.get('block_size', 1024)
     print(f'{block_size=}')
+
+    print(f'{device=} {torch_dtype=}')
+    print(f'{next(model.parameters()).dtype=}')
+    
+    print()
 
     # ------------------------------
     # Prepare datasets.
@@ -256,16 +260,22 @@ export CUDA_VISIBLE_DEVICES=4; python ~/ZIP-FIT/zip_fit/train/train.py --mode dr
 conda activate zip_fit
 conda activate zip_fit
 export CUDA_VISIBLE_DEVICES=4
-# python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name gpt2
-python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name Qwen/Qwen2.5-0.5B
-# python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name google/gemma-2-2b 
-# python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name meta-llama/Meta-Llama-3-8B 
+
+python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name gpt2
+python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name Qwen/Qwen2.5-0.5B
+
+python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name google/gemma-2-2b 
+
+python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name meta-llama/Llama-3.2-1B 
+python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name meta-llama/Llama-3.2-3B 
+
+python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-uncompiled-py-2-gsm8k --num_train_epochs 1 --model_name meta-llama/Meta-Llama-3-8B 
     """
     def my_prompt_format(question: str, answer: str, final_answer: str)-> str:
         return f'question: {question}\nanswer: {answer}\n### {final_answer}'
     # Path to your saved JSON file
     # ds_train = load_dataset("json", data_files=os.path.expanduser("~/data/synthetic_data/uncompiled_dspy/syndata_100_2025_m02_d05_t18h_29m_01s.json"))
-    ds_train = load_dataset("json", split='train', data_files=os.path.expanduser("~/data/synthetic_data/uncompiled_dspy/syndata_18612_2025_m02_d05_t18h_38m_11s.json"))
+    ds_train = load_dataset("json", split='train[:70]', data_files=os.path.expanduser("~/data/synthetic_data/uncompiled_dspy/syndata_18612_2025_m02_d05_t18h_38m_11s.json"))
 
     # Evals
     ds_eval: Dataset  = load_dataset("openai/gsm8k", 'main', split="test").with_format('torch')
@@ -279,7 +289,7 @@ python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-u
         remove_columns=ds_train.column_names,  # Remove all original columns.
         num_proc=48,
     )
-    print(f'{len(ds_train)=}')
+    print(f'{len(ds_train)=} {ds_train.column_names=}')
     # Tokenize and group text for ds_train.
     ds_train = ds_train.map(
         lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=block_size),
@@ -288,7 +298,7 @@ python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-u
         # remove_columns=['text'], 
         num_proc=48,
     )
-    print(f'{len(ds_train)=}')
+    print(f'{len(ds_train)=} {ds_train.column_names=}')
     
     # Do the same for ds_eval.
     ds_eval = ds_eval.map(
@@ -298,12 +308,14 @@ python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-u
         remove_columns=ds_eval.column_names,  # Remove all original columns.
         num_proc=48,
     )
+    print(f'{len(ds_eval)=} {ds_eval.column_names=}')
     ds_eval = ds_eval.map(
         lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=block_size),
         batched=True,
         remove_columns=ds_eval.column_names,
         num_proc=48,
     )
+    print(f'{len(ds_eval)=} {ds_eval.column_names=}')
     # For teacher-forced evaluation, retain raw strings by creating 'prompt' and 'gold_response' fields.
     ds_tf_eval = ds_tf_eval.map(
         lambda batch: {
@@ -315,6 +327,7 @@ python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-u
         batched=True,
         num_proc=48
     )
+    print(f'{len(ds_tf_eval)=} {ds_tf_eval.column_names=}')
 
     # ------------------------------
     # Define training arguments.
@@ -354,6 +367,7 @@ python ~/ZIP-FIT/zip_fit/train/train.py --mode online --project self-opt-train-u
         # Hub push parameters.
         # push_to_hub=True,
         # hub_model_id=final_model_name,
+        # remove_unused_columns=False,
     )
 
     # ------------------------------
