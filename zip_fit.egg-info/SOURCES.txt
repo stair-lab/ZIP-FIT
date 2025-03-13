@@ -12,13 +12,6 @@ zip_fit.egg-info/SOURCES.txt
 zip_fit.egg-info/dependency_links.txt
 zip_fit.egg-info/requires.txt
 zip_fit.egg-info/top_level.txt
-zip_fit/old/__lean_pass_k_unbiased.py
-zip_fit/old/_lean_pass_k.py
-zip_fit/old/_lean_pass_k_unbiased.py
-zip_fit/old/_pass_k_unbiased.py
-zip_fit/old/_simple_train.py
-zip_fit/old/_tfa.py
-zip_fit/old/_tfa2_fully_vectorized.py
 zip_fit/old/data.py
 zip_fit/old/models.py
 zip_fit/old/simple_train.py
