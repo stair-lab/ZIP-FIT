@@ -1,5 +1,5 @@
 Metadata-Version: 2.2
-Name: zip-fit
+Name: zip_fit
 Version: 1.0.8
 Summary: Data Selection via Compression-Based Alignment
 Author-email: Elyas Obbad <eobbad@stanford.edu>
@@ -206,7 +206,7 @@ License:
            See the License for the specific language governing permissions and
            limitations under the License.
         
-Keywords: data selection,compression,zip-fit,nlp,language models
+Keywords: data selection,compression,zip-fit,nlp,language models,zip_fit
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
