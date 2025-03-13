@@ -1,183 +1,288 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Evaluation Script for AI4M/gemma2-2b-gpt4-more-5-epochs on UDACA/proofnet-v3-lean4 Dataset.
+Evaluate cross-entropy loss on the 'AI4M/gemma2-2b-gpt4-more-5-epochs' model using the
+'HuggingFace Trainer' and the 'UDACA/proofnet-v3-lean4' dataset, ensuring the same
+"block packing" approach that was used during training.
 
-This script:
-  1. Loads the model "AI4M/gemma2-2b-gpt4-more-5-epochs" and its tokenizer.
-  2. Loads the full "validation" split of the dataset "UDACA/proofnet-v3-lean4".
-  3. Creates a "text" field for each example (using "header_no_import" if available,
-     otherwise "header") to mimic the training setup.
-  4. Tokenizes and groups texts into fixed-size blocks in the same manner as during training.
-  5. Uses the Hugging Face Trainer to evaluate (without training) on the entire dataset,
-     ensuring that no evaluation steps are skipped.
-  6. Provides a function to generate text completions using the model's generation method.
-  7. Prints the computed cross-entropy loss.
+We'll use a custom tokenization/grouping step to create fixed-length blocks of tokens
+from the raw text, just as in a typical language-model training loop. Then we rely on
+the Hugging Face Trainer for the evaluation step, which conveniently computes the
+average cross-entropy (and logs it as `'eval_loss'`).
 
-Key points:
-  - No training parameters like logging_steps are used since we are not training.
-  - No max_eval_steps is set so that Trainer.evaluate() iterates over the entire eval_dataset.
-  - The tokenization and grouping function is identical to that used in training, ensuring consistency.
-  
+By default, HF's Trainer returns the "average token-level negative log-likelihood"
+in `'eval_loss'`. You can then take `math.exp(eval_loss)` to see the equivalent
+perplexity if desired.
+
+Requirements:
+    python>=3.8
+    torch
+    transformers
+    datasets
+    nltk
+    accelerate (if using multi-GPU or a distributed setup)
+
 Usage:
-    pip install transformers datasets torch
-    python eval_loss.py
+    python evaluate_cross_entropy_trainer.py
 """
 
+import os
+import math
 import torch
-from typing import List, Optional, Dict, Any
-from transformers import AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingArguments
-from datasets import load_dataset
+import nltk
+from itertools import chain
+from typing import Dict, List, Any, Optional
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    TrainingArguments,
+    Trainer,
+    DataCollatorForLanguageModeling,  # we’ll override or not, but included for reference
+    default_data_collator,
+)
+from datasets import load_dataset, Dataset
+from torch.utils.data import Dataset as TorchDataset
 
+###############################################################################
+# 1. Seeding for reproducibility
+###############################################################################
+
+def seed_everything(seed: int = 42) -> None:
+    """
+    Seed Python, NumPy, and PyTorch for reproducibility.
+
+    Args:
+        seed (int): The random seed for all relevant RNGs.
+    """
+    import random
+    import numpy as np
+    from transformers import set_seed as hf_set_seed
+
+    print(f"Setting random seed = {seed}")
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    hf_set_seed(seed)
+
+
+###############################################################################
+# 2. Block-packing function
+###############################################################################
 
 def tokenize_and_group_texts_via_blocks(
     examples: Dict[str, List[str]],
     tokenizer: AutoTokenizer,
-    block_size: int,
-) -> Dict[str, torch.Tensor]:
+    block_size: int = 1024,
+) -> Dict[str, Any]:
     """
-    Tokenizes a batch of raw text examples and groups the tokens into fixed-size blocks.
+    Tokenizes raw text examples and groups tokens into fixed-size blocks, 
+    replicating the typical approach for causal language-modeling training.
 
-    This replicates the training-time processing by:
-      1. Tokenizing each text individually and adding BOS/EOS tokens.
-      2. Concatenating all tokenized outputs into a single long list.
-      3. Truncating to an exact multiple of block_size.
-      4. Splitting the list into blocks.
-      5. Creating labels identical to the input_ids.
+    Steps:
+      1) For each string in 'examples["text"]':
+         - Optionally prepend BOS if tokenizer.bos_token_id is not None
+         - Tokenize with add_special_tokens=False
+         - Append EOS if tokenizer.eos_token_id is not None
+      2) Concatenate all token IDs into a single long list.
+      3) Truncate so that the final length is multiple of block_size.
+      4) Break into contiguous segments (blocks) of block_size tokens.
+      5) Return {'input_ids': blocks, 'labels': blocks} as lists of lists.
+
+    We'll rely on the Trainer's default collator or a simple data collator
+    that can convert these to torch tensors at batch time.
 
     Args:
-        examples (Dict[str, List[str]]): A dict with key "text" mapping to a list of strings.
-        tokenizer (AutoTokenizer): The tokenizer instance.
-        block_size (int): Fixed block length (e.g. 1024).
+        examples (Dict[str, List[str]]): A batch of examples containing a "text" key.
+        tokenizer (AutoTokenizer): A Hugging Face tokenizer, e.g. GPT2Tokenizer.
+        block_size (int): The desired length of each token block.
 
     Returns:
-        Dict[str, torch.Tensor]: A dict with "input_ids" and "labels" tensors.
+        Dict[str, List[List[int]]]:
+            A dictionary with keys 'input_ids' and 'labels', each a list of 
+            integer token blocks of length 'block_size'.
     """
-    from itertools import chain
-
-    # Retrieve special token IDs.
-    eos_token_id: int = tokenizer.eos_token_id
     bos_token_id: Optional[int] = tokenizer.bos_token_id
+    eos_token_id: Optional[int] = tokenizer.eos_token_id
 
-    # Tokenize each text, prepending BOS (if available) and appending EOS.
-    token_lists: List[List[int]] = [
-        (([bos_token_id] if bos_token_id is not None else []) +
-         tokenizer(text)["input_ids"] + [eos_token_id])
-        for text in examples["text"]
+    # 1. Tokenize each example separately, including BOS/EOS if available.
+    tokenized_texts = []
+    for txt in examples["text"]:
+        tokens = []
+        if bos_token_id is not None:
+            tokens.append(bos_token_id)
+
+        # Tokenize
+        res = tokenizer(txt, add_special_tokens=False)
+        tokens.extend(res["input_ids"])
+
+        if eos_token_id is not None:
+            tokens.append(eos_token_id)
+
+        tokenized_texts.append(tokens)
+
+    # 2. Flatten all tokenized outputs
+    concatenated = list(chain(*tokenized_texts))
+
+    # 3. Truncate to a multiple of block_size
+    total_length = (len(concatenated) // block_size) * block_size
+    concatenated = concatenated[:total_length]
+
+    # 4. Break into blocks
+    result_input_ids = [
+        concatenated[i : i + block_size]
+        for i in range(0, total_length, block_size)
     ]
 
-    # Flatten the list of token lists.
-    concatenated_tokens: List[int] = list(chain(*token_lists))
-
-    # Truncate to a length that is an exact multiple of block_size.
-    total_length: int = len(concatenated_tokens)
-    num_blocks: int = total_length // block_size
-    total_length = num_blocks * block_size
-
-    # Split into blocks.
-    all_token_blocks: List[List[int]] = [
-        concatenated_tokens[i: i + block_size] for i in range(0, total_length, block_size)
-    ]
-
-    input_ids = torch.tensor(all_token_blocks, dtype=torch.long)
-    return {"input_ids": input_ids, "labels": input_ids.clone()}
+    # 5. For LM, 'labels' == 'input_ids'
+    return {
+        "input_ids": result_input_ids,
+        "labels": [block.copy() for block in result_input_ids],  # avoid same list reference
+    }
 
 
-def generate_completion(prompt: str, model: AutoModelForCausalLM, tokenizer: AutoTokenizer, max_length: int = 512) -> str:
+###############################################################################
+# 3. Hugging Face Dataset -> Flatten blocks into a single item per block
+###############################################################################
+
+class BlocksAsExamplesDataset(TorchDataset):
     """
-    Generates a text continuation from a given prompt using the model.
+    A small utility dataset class that flattens the "list of blocks" returned by
+    the map function into separate examples. If a row in the dataset has N blocks,
+    we yield N separate examples. This allows the HF Trainer to see each block 
+    as an individual sample.
 
-    Uses greedy decoding (do_sample=False) to generate up to max_length tokens.
+    The dataset is expected to have columns: 'input_ids', 'labels' 
+    which are lists of integer lists. E.g. shape (Nblocks, block_size).
 
-    Args:
-        prompt (str): The text prompt.
-        model (AutoModelForCausalLM): The causal language model.
-        tokenizer (AutoTokenizer): The corresponding tokenizer.
-        max_length (int, optional): Maximum length (default is 512).
-
-    Returns:
-        str: The generated text.
+    Example usage:
+        raw_dataset = raw_dataset.map(tokenize_and_group_texts_via_blocks, batched=True)
+        # 'raw_dataset' now has columns with lists-of-lists.
+        eval_dataset = BlocksAsExamplesDataset(raw_dataset)
     """
-    inputs = tokenizer(prompt, return_tensors="pt")
-    input_ids = inputs["input_ids"].to(model.device)
-    output_ids = model.generate(input_ids, max_length=max_length, do_sample=False)
-    return tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    def __init__(self, dataset: Dataset):
+        self.inner_dataset = dataset
+        self.offsets = []  # (index_in_inner_dataset, index_in_that_row_block)
+        cum_count = 0
 
+        # We read each row. If row["input_ids"] is a list of B blocks, 
+        # then we add B offsets pointing to that row, block index.
+        for row_idx in range(len(dataset)):
+            row = dataset[row_idx]
+            blocks_count = len(row["input_ids"])  # number of blocks in that row
+            for i in range(blocks_count):
+                self.offsets.append((row_idx, i))
+
+    def __len__(self) -> int:
+        return len(self.offsets)
+
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        row_idx, block_idx = self.offsets[idx]
+        row = self.inner_dataset[row_idx]
+        # Convert the single block (list of ints) into a torch tensor
+        input_ids_block = row["input_ids"][block_idx]
+        labels_block = row["labels"][block_idx]
+
+        return {
+            "input_ids": torch.tensor(input_ids_block, dtype=torch.long),
+            "labels": torch.tensor(labels_block, dtype=torch.long),
+        }
+
+
+###############################################################################
+# 4. Main script: Evaluate cross-entropy via HF Trainer
+###############################################################################
 
 def main() -> None:
     """
-    Main function to evaluate the model.
-
-    Steps:
-      1. Load the model and tokenizer.
-      2. Load the full validation dataset from UDACA/proofnet-v3-lean4.
-      3. Map each example to create a "text" field (from "header_no_import" or "header").
-      4. Tokenize and group the texts into fixed-size blocks using the training function.
-      5. Configure TrainingArguments for evaluation only—ensuring the full dataset is processed.
-      6. Initialize the HF Trainer and call evaluate() to compute the cross-entropy loss.
-      7. Print the evaluation loss.
+    Main driver:
+     1) Load 'AI4M/gemma2-2b-gpt4-more-5-epochs'
+     2) Load 'UDACA/proofnet-v3-lean4', using 'validation' split
+     3) Rename 'nl_statement' -> 'text'
+     4) Tokenize + group into blocks (like training)
+     5) Flatten so each block is a separate example
+     6) Create a Trainer with do_eval=True, do_train=False
+     7) Call trainer.evaluate() and print the average cross-entropy (eval_loss)
     """
-    # Model and dataset identifiers.
-    model_name: str = "AI4M/gemma2-2b-gpt4-more-5-epochs"
-    dataset_name: str = "UDACA/proofnet-v3-lean4"
-    eval_split: str = "validation"  # Use full validation set.
-    block_size: int = 1024         # Must match training configuration.
+    nltk.download("punkt", quiet=True)
+    seed_everything(42)
 
-    # Load model and tokenizer.
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    model.to(device)
+    MODEL_NAME = "AI4M/gemma2-2b-gpt4-more-5-epochs"
+    DATASET_NAME = "UDACA/proofnet-v3-lean4"
+    SPLIT = "validation"
+    BLOCK_SIZE = 1024
+    BATCH_SIZE = 1  # Adjust per GPU memory
 
-    # Load the evaluation dataset.
-    dataset = load_dataset(dataset_name, split=eval_split)
+    # 1. Load model + tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    # Create a "text" field from "header_no_import" (fallback to "header").
-    def select_text(example: Dict[str, Any]) -> Dict[str, str]:
-        text = example.get("header_no_import") or example.get("header")
-        return {"text": text} if text is not None else {}
+    model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
+    model.eval()
 
-    dataset = dataset.map(select_text, remove_columns=[col for col in dataset.column_names if col != "text"])
-    dataset = dataset.filter(lambda example: example["text"] is not None)
+    # 2. Load dataset split
+    raw_dataset = load_dataset(DATASET_NAME, split=SPLIT)
 
-    # Tokenize and group texts into blocks.
-    dataset = dataset.map(
-        lambda batch: tokenize_and_group_texts_via_blocks(batch, tokenizer=tokenizer, block_size=block_size),
+    # 3. Rename 'nl_statement' -> 'text' for tokenization
+    def rename_columns(example):
+        return {"text": example["nl_statement"]}
+
+    raw_dataset = raw_dataset.map(
+        rename_columns,
+        remove_columns=raw_dataset.column_names,
         batched=True,
     )
-    dataset.set_format(type="torch", columns=["input_ids", "labels"])
 
-    # Set up TrainingArguments for evaluation only.
-    # Note: We do not use logging_steps here since we are not training.
-    training_args = TrainingArguments(
-        output_dir="./eval_output",         # Required output directory.
-        per_device_eval_batch_size=1,         # Batch size for evaluation.
-        do_eval=True,                         # Enable evaluation mode.
-        report_to=["none"],                   # Disable external logging.
-        # No max_eval_steps is specified; Trainer.evaluate() processes the full dataset.
+    # 4. Tokenize + group into blocks
+    proc_dataset = raw_dataset.map(
+        lambda batch: tokenize_and_group_texts_via_blocks(
+            batch, tokenizer=tokenizer, block_size=BLOCK_SIZE
+        ),
+        batched=True,
     )
 
-    # Initialize the HF Trainer with the full eval_dataset.
+    # 5. Flatten blocks
+    eval_dataset = BlocksAsExamplesDataset(proc_dataset)
+
+    # 6. Define TrainingArguments
+    #    We do NOT train, only evaluate. 
+    #    Trainer will compute the average cross-entropy if 'labels' are present.
+    from transformers import TrainingArguments
+    training_args = TrainingArguments(
+        output_dir="./hf_trainer_eval",
+        per_device_eval_batch_size=BATCH_SIZE,
+        do_train=False,
+        do_eval=True,
+        evaluation_strategy="no"  # We'll just do a single .evaluate() call
+    )
+
+    # 7. Build Trainer. 
+    #    We can use the default_data_collator because our dataset already 
+    #    has 'input_ids'/'labels' shaped as [block_size].
     trainer = Trainer(
         model=model,
         args=training_args,
-        eval_dataset=dataset,   # Full validation set.
-        tokenizer=tokenizer,
+        eval_dataset=eval_dataset,
+        tokenizer=tokenizer,  # Not strictly needed for evaluation, but let's keep for completeness
+        data_collator=default_data_collator,
     )
 
-    # Evaluate the model over the entire dataset.
-    eval_result: Dict[str, float] = trainer.evaluate()
-    eval_loss: float = eval_result.get("eval_loss", float("nan"))
-    print(f"Evaluation Cross-Entropy Loss: {eval_loss:.4f}")
+    # 8. Evaluate
+    metrics = trainer.evaluate()
+    # metrics['eval_loss'] is the average cross-entropy in "natural log" units per token
+    eval_loss = metrics["eval_loss"]
+    ppl = math.exp(eval_loss)
 
-    # Example usage of the generation function:
-    example_prompt = dataset[0]["input_ids"]
-    # (For generation, decode the input_ids back to text)
-    prompt_text = tokenizer.decode(example_prompt, skip_special_tokens=True)
-    generated_text = generate_completion(prompt_text, model, tokenizer, max_length=512)
-    print("\nSample Prompt:")
-    print(prompt_text)
-    print("\nGenerated Completion:")
-    print(generated_text)
+    print("\n===========================================")
+    print(f"Eval Cross-Entropy (nat) = {eval_loss:.4f}")
+    print(f"Equivalent Perplexity   = {ppl:.4f}")
+    print("===========================================\n")
+
 
 if __name__ == "__main__":
     main()
