@@ -4,13 +4,7 @@
 			"path": "."
 		},
 		{
-			"path": "../putnam-axiom"
-		},
-		{
-			"path": "../PyPantograph"
-		},
-		{
-			"path": "../data-quality-alignment-sft-af"
+			"path": "../self-opt-data-gen"
 		}
 	],
 	"settings": {}

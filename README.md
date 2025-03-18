@@ -139,12 +139,30 @@ lake --version
 
 **Note**: This sets up Lean for your user via elan, which will manage multiple Lean versions as needed.
 
-## 4. Clone & Prepare PyPantograph
-Note: **you need Lean4, Mathlib4 and PyPantograph/Pantograph to all agree on Lean version** eg **4.15.0** at the time of this writing.
+## 4. Prepare PyPantograph
+Note: **you need Lean4, Mathlib4 and PyPantograph/Pantograph to all agree on Lean version** e.g., **4.15.0** at the time of this writing.
 
+<!-- ```bash
+# Get the PyPantograph repo submodule if not present already:
+if [ ! -d "PyPantograph" ] || ! grep -q "PyPantograph" .gitmodules || ! grep -q "submodule.*PyPantograph" .git/config; then
+   # Adds the submodule (creates/updates .gitmodules automatically)
+   git submodule add git@github.com:lenianiva/PyPantograph.git
+   # Reads .gitmodules and registers submodules in .git/config (does not clone/update them)
+   git submodule init  
+   # Fetches latest commits from remote for submodules, including nested ones
+   git submodule update --recursive --remote 
+else
+    # If it's already a submodule, just update all submodules recursively
+    git submodule update --recursive --remote
+fi
+```
+
+If the previous fails (eg git submodules are complicated),
+then you can instead git clone it: -->
 ```bash
 git clone --recurse-submodules git@github.com:lenianiva/PyPantograph.git
 cd PyPantograph
+# Initialize and update all submodules (including nested ones) recursively
 git submodule update --init --recursive
 git pull
 ```
@@ -154,6 +172,7 @@ git pull
 PyPantograph has a `src/` submodule that also pins a Lean version. Confirm it’s `4.15.0`:
 
 ```bash
+# either cd ~/ZIP-FIT/PyPantograph or cd ~/PyPantograph
 cd PyPantograph
 cat src/lean-toolchain
 # Expect: leanprover/lean4:v4.15.0

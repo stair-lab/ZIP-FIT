@@ -2,6 +2,7 @@ LICENSE
 README.md
 pyproject.toml
 zip_fit/__init__.py
+zip_fit/eval_ce.py
 zip_fit/lean_pass_k_unbiased.py
 zip_fit/tfa.py
 zip_fit/tfce.py

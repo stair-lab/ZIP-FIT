@@ -429,7 +429,7 @@ python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-u
     return results
 
 def main_full_run(config: dict = {}):
-    from lean_pass_k_unbiased import run_pass_k_eval
+    from metrics.lean4_comp_pass_k_unbiased import run_lean4_comp_pass_k_unbiased_eval
     import os
     import wandb
 
@@ -499,7 +499,7 @@ def main_full_run(config: dict = {}):
     #   - Generates 'N' completions per prompt,
     #   - Checks each for correctness (e.g., compilation),
     #   - Computes and returns the overall pass@k score.
-    pass_k_before_train = run_pass_k_eval(
+    pass_k_before_train = run_lean4_comp_pass_k_unbiased_eval(
         prompts=prompts,
         model_name=model_name,
         server=server,
@@ -528,7 +528,7 @@ def main_full_run(config: dict = {}):
     #   - Generates 'N' completions per prompt,
     #   - Checks each for correctness (e.g., compilation),
     #   - Computes and returns the overall pass@k score.
-    pass_k_before_train = run_pass_k_eval(
+    pass_k_before_train = run_lean4_comp_pass_k_unbiased_eval(
         prompts=prompts,
         model_name=model_name,
         server=server,
