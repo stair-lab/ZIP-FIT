@@ -239,6 +239,9 @@ Requires-Dist: peft
 Requires-Dist: bitsandbytes
 Requires-Dist: einops
 Requires-Dist: sentencepiece
+Requires-Dist: lm_eval[vllm]
+Requires-Dist: vllm==0.6.4.post1
+Requires-Dist: antlr4-python3-runtime==4.11
 Provides-Extra: dev
 Requires-Dist: pytest>=6.0; extra == "dev"
 Requires-Dist: flake8>=3.9; extra == "dev"

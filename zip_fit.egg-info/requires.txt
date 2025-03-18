@@ -24,6 +24,9 @@ peft
 bitsandbytes
 einops
 sentencepiece
+lm_eval[vllm]
+vllm==0.6.4.post1
+antlr4-python3-runtime==4.11
 
 [dev]
 pytest>=6.0
