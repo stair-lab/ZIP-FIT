@@ -141,37 +141,50 @@ lake --version
 
 ## 4. Prepare PyPantograph
 Note: **you need Lean4, Mathlib4 and PyPantograph/Pantograph to all agree on Lean version** e.g., **4.15.0** at the time of this writing.
+Perhaps helpful chat about this repo install: https://chatgpt.com/share/67d9ca63-37c4-8001-b6e7-74f45e92fe98
 
-<!-- ```bash
+```bash
 # Get the PyPantograph repo submodule if not present already:
 if [ ! -d "PyPantograph" ] || ! grep -q "PyPantograph" .gitmodules || ! grep -q "submodule.*PyPantograph" .git/config; then
-   # Adds the submodule (creates/updates .gitmodules automatically)
-   git submodule add git@github.com:lenianiva/PyPantograph.git
+   # Adds the PyPantograph submodule on the "dev" branch (updates .gitmodules automatically)
+   git submodule add -b main git@github.com:lenianiva/PyPantograph.git
    # Reads .gitmodules and registers submodules in .git/config (does not clone/update them)
    git submodule init  
-   # Fetches latest commits from remote for submodules, including nested ones
+   # Fetches latest commits from remote for submodules, including nested ones (always gets latest submodule commits)
    git submodule update --recursive --remote 
+   # Inits & updates all submodules (including nested ones) to their tracked commits, not the latest remote, (reproducible builds, common case)
+   # git submodule update --init --recursive --remot
 else
     # If it's already a submodule, just update all submodules recursively
     git submodule update --recursive --remote
 fi
 ```
+Note: Leni suggests the dev branch: https://github.com/stanford-centaur/PyPantograph/issues/84
 
 If the previous fails (eg git submodules are complicated),
-then you can instead git clone it: -->
+you can instead git clone it and see if it works:
 ```bash
+# Clones the repository and fetches submodules recursively
+cd ~
 git clone --recurse-submodules git@github.com:lenianiva/PyPantograph.git
-cd PyPantograph
-# Initialize and update all submodules (including nested ones) recursively
-git submodule update --init --recursive
+# Enters the repository directory
+cd ~/PyPantograph
+# Initializes and updates every level of submodules from their remote sources
+git submodule update --init --recursive --remote
+# Pulls the latest code changes from the repository's remote branch
 git pull
 ```
 
+TODO: fix bellow, does lean-toolchain need to be already there or not?
 ### 4A. Ensure PyPantograph & Submodule Are Lean 4.15.0
 
 PyPantograph has a `src/` submodule that also pins a Lean version. Confirm it’s `4.15.0`:
 
+TODO: check if this check is too early or not: https://github.com/stanford-centaur/PyPantograph/issues/84 
 ```bash
+# Got to the dir depending how you installed it
+cd ~/
+cd ~/ZIP-FIT/
 # either cd ~/ZIP-FIT/PyPantograph or cd ~/PyPantograph
 cd PyPantograph
 cat src/lean-toolchain
@@ -179,33 +192,41 @@ cat src/lean-toolchain
 ```
 
 If it’s correct, proceed. If not, pull the latest or check out the branch that uses 4.15.0:
-
 ```bash
+# Got to the dir depending how you installed it
+cd ~/
+cd ~/ZIP-FIT/
+# either cd ~/ZIP-FIT/PyPantograph or cd ~/PyPantograph
+cd PyPantograph
+# Fetch and merge the latest changes from the remote
 git pull
+# Initialize and update submodules at their pinned commits
 git submodule update --init --recursive
-# Then re-check src/lean-toolchain
+# Then re-check src/lean-toolchain to verify that it specifies the correct Lean version
 cat src/lean-toolchain
+# Expect: leanprover/lean4:v4.15.0
 ```
-
-Test PyPantograph server:
-```bash
-python -m pantograph.server
-```
+TODO: above doesn't work either. So either leni has to push this (to be checked in issue ref above 84),
+https://github.com/stanford-centaur/PyPantograph/issues/84 
+or re do the bellow install of pypanto & lean every time.  
 
 ## 5. Install Poetry
 
 Check if you have poetry:
 ```bash
+# Check if you have poetry
 poetry
 ```
 
 ### (Optional)
 
 We’ll install Poetry **inside** the `zip_fit` environment (so we don’t leave conda):
-
 ```bash
+# [Optional] Install Poetry within the current conda environment
 pip install poetry
+# [Optional] Check which Poetry is being used
 which poetry
+# [Optional] Check Poetry version
 poetry --version
 ```
 If you prefer a separate Python env just for Poetry, see the commented lines below, but typically you can keep it simple by installing Poetry in `zip_fit`.
@@ -241,7 +262,10 @@ If it hijacks your shell’s Python, you can open a new shell and re-activate zi
 1. **Stay** in the [`PyPantograph](https://github.com/stanford-centaur/PyPantograph)` folder (and in the `zip_fit` env).  
 2. **Configure Poetry** so it doesn’t create an extra venv:
    ```bash
-   cd ~/PyPantograph
+   # Got to the dir depending how you installed it
+   cd ~/
+   cd ~/ZIP-FIT/
+   cd PyPantograph
    poetry config virtualenvs.create false
    ```
 3. **Install**:
