@@ -148,7 +148,7 @@ lake --version
 
 ## 4. Prepare PyPantograph before Pip Installing it
 Note: **you need Lean4, Mathlib4 and PyPantograph/Pantograph to all agree on Lean version** e.g., **4.15.0** at the time of this writing.
-Perhaps helpful chat about this repo install: https://chatgpt.com/share/67da1f37-30ec-8001-9b6c-f0f2969180f9 
+Useful chat: https://chatgpt.com/c/67da423c-e384-8001-a934-eadf6aca7b11 
 
 <!-- ```bash
 # Get the PyPantograph repo submodule if not present already:
