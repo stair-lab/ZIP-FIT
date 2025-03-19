@@ -85,6 +85,7 @@ Below are comprehensive instructions for setting up everything in a **conda** en
 conda create -n zip_fit python=3.11
 conda activate zip_fit
 conda activate zip_fit
+pip install --upgrade pip
 ```
 
 ### Install ZIP-FIT
@@ -92,13 +93,19 @@ conda activate zip_fit
 If you have the ZIP-FIT repo at `~/ZIP-FIT`, install it in editable mode:
 
 ```bash
-git clone git@github.com:stair-lab/ZIP-FIT.git
+# Clone the ZIP-FIT repository (SSH) and recursively initialize any submodules
+git clone --recurse-submodules git@github.com:stair-lab/ZIP-FIT.git
+# Change directory into the newly cloned ZIP-FIT repo
 cd ZIP-FIT
+# Fetch the latest changes and branches from the remote
 git fetch origin
+# Show all local and remote branches
 git branch -a
+# Create and switch to the 'bm_dev' branch, tracking remote 'origin/bm_dev'
 git checkout -b bm_dev origin/bm_dev
+# Display branch details, including local/remote tracking and commit differences
 git branch -vv
-
+# Install ZIP-FIT in editable mode, so local changes are reflected immediately
 pip install -e ~/ZIP-FIT
 ```
 
@@ -139,19 +146,19 @@ lake --version
 
 **Note**: This sets up Lean for your user via elan, which will manage multiple Lean versions as needed.
 
-## 4. Prepare PyPantograph
+## 4. Prepare PyPantograph before Pip Installing it
 Note: **you need Lean4, Mathlib4 and PyPantograph/Pantograph to all agree on Lean version** e.g., **4.15.0** at the time of this writing.
-Perhaps helpful chat about this repo install: https://chatgpt.com/share/67d9ca63-37c4-8001-b6e7-74f45e92fe98
+Perhaps helpful chat about this repo install: https://chatgpt.com/share/67da1f37-30ec-8001-9b6c-f0f2969180f9 
 
-```bash
+<!-- ```bash
 # Get the PyPantograph repo submodule if not present already:
 if [ ! -d "PyPantograph" ] || ! grep -q "PyPantograph" .gitmodules || ! grep -q "submodule.*PyPantograph" .git/config; then
-   # Adds the PyPantograph submodule on the "dev" branch (updates .gitmodules automatically)
+   # Adds the PyPantograph submodule on the right branch (updates .gitmodules automatically)
    git submodule add -b main git@github.com:lenianiva/PyPantograph.git
    # Reads .gitmodules and registers submodules in .git/config (does not clone/update them)
    git submodule init  
    # Fetches latest commits from remote for submodules, including nested ones (always gets latest submodule commits)
-   git submodule update --recursive --remote 
+   git submodule update --init --recursive --remote 
    # Inits & updates all submodules (including nested ones) to their tracked commits, not the latest remote, (reproducible builds, common case)
    # git submodule update --init --recursive --remot
 else
@@ -159,45 +166,39 @@ else
     git submodule update --recursive --remote
 fi
 ```
-Note: Leni suggests the dev branch: https://github.com/stanford-centaur/PyPantograph/issues/84
+Note: Leni suggests the `main` branch for PyPantograph: https://github.com/stanford-centaur/PyPantograph/issues/84 but the `dev` branch for `Pantograph` (a depedency of PyPantograph, though that isn't something we need to hopefully worry about).
+Note: If the previous fails (eg git submodules are complicated),
+you can instead git clone it and see if it works: -->
 
-If the previous fails (eg git submodules are complicated),
-you can instead git clone it and see if it works:
+We recommend using a direct clone of PyPantograph rather than adding it as a submodule to avoid git submodule complexity:
 ```bash
 # Clones the repository and fetches submodules recursively
 cd ~
 git clone --recurse-submodules git@github.com:lenianiva/PyPantograph.git
 # Enters the repository directory
 cd ~/PyPantograph
-# Initializes and updates every level of submodules from their remote sources
-git submodule update --init --recursive --remote
 # Pulls the latest code changes from the repository's remote branch
 git pull
+# Initializes and updates every level of submodules from their remote sources
+git submodule update --init --recursive --remote
 ```
 
-TODO: fix bellow, does lean-toolchain need to be already there or not?
 ### 4A. Ensure PyPantograph & Submodule Are Lean 4.15.0
-
-PyPantograph has a `src/` submodule that also pins a Lean version. Confirm it’s `4.15.0`:
-
-TODO: check if this check is too early or not: https://github.com/stanford-centaur/PyPantograph/issues/84 
+PyPantograph has a `src/` (`Pantograph`) submodule that also pins a Lean version. 
+Confirm it's `4.15.0`:
 ```bash
-# Got to the dir depending how you installed it
+# Got to the dir
 cd ~/
-cd ~/ZIP-FIT/
 # either cd ~/ZIP-FIT/PyPantograph or cd ~/PyPantograph
 cd PyPantograph
 cat src/lean-toolchain
 # Expect: leanprover/lean4:v4.15.0
 ```
 
-If it’s correct, proceed. If not, pull the latest or check out the branch that uses 4.15.0:
+If the toolchain version is different, update it:
 ```bash
-# Got to the dir depending how you installed it
-cd ~/
-cd ~/ZIP-FIT/
-# either cd ~/ZIP-FIT/PyPantograph or cd ~/PyPantograph
-cd PyPantograph
+# Got to the dir 
+cd ~/PyPantograph
 # Fetch and merge the latest changes from the remote
 git pull
 # Initialize and update submodules at their pinned commits
@@ -206,21 +207,20 @@ git submodule update --init --recursive
 cat src/lean-toolchain
 # Expect: leanprover/lean4:v4.15.0
 ```
-TODO: above doesn't work either. So either leni has to push this (to be checked in issue ref above 84),
-https://github.com/stanford-centaur/PyPantograph/issues/84 
-or re do the bellow install of pypanto & lean every time.  
 
 ## 5. Install Poetry
+We need Poetry to install PyPantograph because it uses it to build it.
 
 Check if you have poetry:
 ```bash
 # Check if you have poetry
-poetry
+which poetry
+# Example output: /lfs/skampere1/0/brando9/.virtualenvs/venv_for_poetry/bin/poetry
 ```
 
 ### (Optional)
 
-We’ll install Poetry **inside** the `zip_fit` environment (so we don’t leave conda):
+We'll install Poetry **inside** the `zip_fit` environment (so we don't leave conda):
 ```bash
 # [Optional] Install Poetry within the current conda environment
 pip install poetry
@@ -232,7 +232,7 @@ poetry --version
 If you prefer a separate Python env just for Poetry, see the commented lines below, but typically you can keep it simple by installing Poetry in `zip_fit`.
 
 #### Install Poetry in it's seperate python env outside your current env
-Remark: Installing Poetry in a separate Python environment prevents conflicts between Poetry’s dependencies and those of your Conda or project environments, ensuring a stable and isolated package management experience.
+Remark: Installing Poetry in a separate Python environment prevents conflicts between Poetry's dependencies and those of your Conda or project environments, ensuring a stable and isolated package management experience.
 
 5. Create a Separate Python Env Just for Poetry
 From any shell (you can leave zip_fit or open a new terminal):
@@ -255,67 +255,85 @@ echo 'export PATH="$VENV_PATH/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 Note: After this, which poetry may show `$HOME/.virtualenvs/venv_for_poetry/bin/poetry`.
-If it hijacks your shell’s Python, you can open a new shell and re-activate zip_fit when needed.
+If it hijacks your shell's Python, you can open a new shell and re-activate zip_fit when needed.
 
 ## 6. Install PyPantograph into `zip_fit`
 
-1. **Stay** in the [`PyPantograph](https://github.com/stanford-centaur/PyPantograph)` folder (and in the `zip_fit` env).  
-2. **Configure Poetry** so it doesn’t create an extra venv:
-   ```bash
-   # Got to the dir depending how you installed it
-   cd ~/
-   cd ~/ZIP-FIT/
-   cd PyPantograph
-   poetry config virtualenvs.create false
-   ```
+1. **Stay** in the [`PyPantograph`](https://github.com/stanford-centaur/PyPantograph)` folder (and in the `zip_fit` env).  
+2. **Configure Poetry** so it doesn't create an extra venv:
+```bash
+# Change PyPantograph dir
+cd ~/PyPantograph
+# Configure Poetry to install packages in the current environment instead of creating a new virtual environment
+poetry config virtualenvs.create false
+```
+
 3. **Install**:
-   ```bash
-   poetry build
-   poetry install
-   ```
-4. **Check** you’re still in `zip_fit`:
-   ```bash
-   which python
-   # Should be something like ~/miniconda/envs/zip_fit/bin/python
-   ```
+```bash
+# Build the distributable package for PyPantograph using Poetry
+poetry build
+# Install the package in the current environment using Poetry
+poetry install
+```
+
+4. **Check** you're still in `zip_fit`:
+```bash
+# Verify that the current Python interpreter is from the 'zip_fit' conda environment
+which python
+# Expected output: /lfs/skampere1/0/brando9/miniconda/envs/zip_fit/bin/python
+```
+
 5. **Verify**:
-   ```bash
-   poetry show
-   # or
-   pip list | grep pantograph
-   ```
+```bash
+# List all installed packages via Poetry to confirm PyPantograph is installed
+poetry show
+# Alternatively, list packages filtered by 'pantograph' using pip
+pip list | grep pantograph
+```
 
 ## 7. Ensure Mathlib4 Matches Lean 4.15.0
-
-PyPantograph’s submodule is pinned to Lean 4.15.0. If you want to import `Mathlib` inside PyPantograph, your local Mathlib4 **must** be the same Lean version.
+PyPantograph's submodule is pinned to Lean 4.15.0. 
+If you want to import `Mathlib` inside PyPantograph, 
+your local Mathlib4 **must** be the same Lean version.
 
 1. **Clone or go to** your `mathlib4` folder:
-   ```bash
-   cd ~
-   git clone https://github.com/leanprover-community/mathlib4.git
-   cd mathlib4
-   ```
+```bash
+# Change directory to the home directory
+cd ~
+# Clone the mathlib4 repository from GitHub
+git clone https://github.com/leanprover-community/mathlib4.git
+# Change directory into the cloned mathlib4 repository
+cd mathlib4
+```
+
 2. **Check out** the branch for Lean 4.15.0:
-   ```bash
-   git fetch --all
-   git checkout releases/v4.15.0
-   cat lean-toolchain
-   # → leanprover/lean4:v4.15.0
-   ```
+```bash
+# Fetch all remote references from every configured remote
+git fetch --all
+# Switch to the release tag matching PyPantograph
+git checkout releases/v4.15.0
+# Display the contents of the lean-toolchain file
+cat lean-toolchain
+# → leanprover/lean4:v4.15.0
+```
+
 3. ** Speed Up** with cache:
-   ```bash
-   lake exe cache get
-   ```
-   This fetches pre-built .olean files for that commit if they exist.
+```bash
+lake exe cache get
+```
+This fetches pre-built .olean files for that commit if they exist.
 
 4. (*optional*) If needed, do a **local build**:
-   ```bash
-   lake clean
-   rm -rf .lake/build
-   lake update
-   lake build
-   ```
-
+```bash
+# Clean previous build artifacts using lake's built-in clean command
+lake clean
+# Remove the entire .lake/build directory to ensure a fresh start
+rm -rf .lake/build
+# Update the lake project, fetching any new dependencies or configuration changes
+lake update
+# Build the project using lake to compile the Lean files and generate olean files
+lake build
+```
 Now, Mathlib4 is on Lean 4.15.0, matching PyPantograph.
 
 ## 8. Final Verification
@@ -339,8 +357,11 @@ cat lean-toolchain
 # → 4.15.0
 
 elan --version
+# elan 3.1.1 (71ddc6633 2024-02-22)
 lean --version
+# Lean (version 4.7.0, x86_64-unknown-linux-gnu, commit 6fce8f7d5cd1, Release)
 lake --version
+# Lake version 5.0.0-6fce8f7 (Lean version 4.7.0)
 
 python -m pantograph.server
 ```
@@ -357,7 +378,30 @@ python -c "from pantograph import Server;import os; \
 
 python -m pantograph.server
 ```
-- If you see **“Pantograph server started!”** and no “invalid header” errors, you’re good!
+- If you see **"Pantograph server started!"** and no "invalid header" errors, you're good!
+
+
+## 10. To deinitialize the PyPantograph git submodule
+
+```bash
+# 1) Change to the ZIP-FIT repository root
+cd ~/ZIP-FIT  # Ensures we are at the ZIP-FIT repo root
+
+# 2) Deinitialize PyPantograph (removes it from .git/config)
+git submodule deinit -f PyPantograph  # Stop tracking PyPantograph as an active submodule
+
+# 3) Remove PyPantograph from Git's index (won't delete local directory by itself)
+git rm -f PyPantograph  # Unregister submodule path in the repo
+
+# 4) Remove the actual PyPantograph folder if still present on disk
+rm -rf PyPantograph/  # Physically delete the submodule directory
+
+# 5) Delete leftover metadata (.git/modules/PyPantograph)
+rm -rf .git/modules/PyPantograph  # Wipes submodule objects & refs from Git's internal tracking
+
+# 6) Commit the removal so the repo no longer references PyPantograph
+git commit -m "Completely remove PyPantograph submodule"
+```
 
 ## 9. (Optional) Re-check ZIP-FIT
 
@@ -380,4 +424,34 @@ Paper: <https://arxiv.org/abs/2410.18194>
   year = {2024},
   journal = {arXiv preprint arXiv:2410.18194},
 }
+```
+
+## 11. Troubleshooting
+
+If you encounter version mismatches or PyPantograph errors:
+
+1. **Version Mismatch**: Ensure all three components (PyPantograph, Pantograph submodule, mathlib4) are using Lean v4.15.0
+```bash
+# Check PyPantograph's submodule version
+cd ~/PyPantograph/src && cat lean-toolchain
+# Check mathlib4 version
+cd ~/mathlib4 && cat lean-toolchain
+```
+
+<!-- 2. **PyPantograph Import Errors**: If you can't import `pantograph`, reinstall it:
+```bash
+cd ~/PyPantograph
+pip install -e .
+``` -->
+
+3. **Server Initialization Errors**: If the server fails to start, try rebuilding the components:
+```bash
+# Rebuild PyPantograph's Lean components
+cd ~/PyPantograph/src
+lake clean
+lake build
+# Rebuild PyPantograph Python package
+cd ~/PyPantograph
+poetry build
+poetry install
 ```
