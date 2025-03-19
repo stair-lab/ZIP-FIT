@@ -429,7 +429,7 @@ python ~/ZIP-FIT/zip_fit/train/train.py --mode dryrun --project self-opt-train-u
     return results
 
 def main_full_run(config: dict = {}):
-    from metrics.lean4_comp_pass_k_unbiased import run_lean4_comp_pass_k_unbiased_eval
+    from metrics.lean4_comp_pass_at_k import run_lean4_comp_pass_k_unbiased_eval
     import os
     import wandb
 
