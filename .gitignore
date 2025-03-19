@@ -161,4 +161,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
-*.code-workspace
+# Python packaging metadata files (automatically generated)
+PKG-INFO
+SOURCES.txt

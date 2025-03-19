@@ -114,6 +114,7 @@ pip install -e ~/ZIP-FIT
 If you want vLLM for flash attention, you can install it via `lm_eval[vllm]`:
 
 ```bash
+# If the bellow are not already there:
 pip install lm_eval[vllm]
 # If you find version issues, pin it:
 pip install vllm==0.6.4.post1
@@ -124,6 +125,10 @@ pip install antlr4-python3-runtime==4.11
 pip list | grep lm_eval
 pip list | grep vllm
 pip list | grep antlr4
+# Expected output:
+# lm_eval                           0.4.8
+# vllm                              0.6.4.post1
+# antlr4-python3-runtime            4.11.0
 ```
 
 ## 3. Install Lean (Via `elan`)
@@ -260,35 +265,30 @@ If it hijacks your shell's Python, you can open a new shell and re-activate zip_
 ## 6. Install PyPantograph into `zip_fit`
 
 1. **Stay** in the [`PyPantograph`](https://github.com/stanford-centaur/PyPantograph)` folder (and in the `zip_fit` env).  
-2. **Configure Poetry** so it doesn't create an extra venv:
+2. **Configure Poetry & Install PyPantograph** so it doesn't create an extra venv:
 ```bash
 # Change PyPantograph dir
 cd ~/PyPantograph
 # Configure Poetry to install packages in the current environment instead of creating a new virtual environment
 poetry config virtualenvs.create false
-```
 
-3. **Install**:
-```bash
+# Install PyPantograph
+# Check you have somewhere poetry
+which peotry
 # Build the distributable package for PyPantograph using Poetry
 poetry build
 # Install the package in the current environment using Poetry
 poetry install
-```
 
-4. **Check** you're still in `zip_fit`:
-```bash
-# Verify that the current Python interpreter is from the 'zip_fit' conda environment
-which python
-# Expected output: /lfs/skampere1/0/brando9/miniconda/envs/zip_fit/bin/python
-```
-
-5. **Verify**:
-```bash
+# **Verify Install Worked**:
 # List all installed packages via Poetry to confirm PyPantograph is installed
 poetry show
 # Alternatively, list packages filtered by 'pantograph' using pip
 pip list | grep pantograph
+
+# Run the PyPantograph server
+python3 -m pantograph.server
+# pip install pexpect # - hack if prev fails maybe this works
 ```
 
 ## 7. Ensure Mathlib4 Matches Lean 4.15.0
@@ -384,23 +384,25 @@ python -m pantograph.server
 ## 10. To deinitialize the PyPantograph git submodule
 
 ```bash
-# 1) Change to the ZIP-FIT repository root
-cd ~/ZIP-FIT  # Ensures we are at the ZIP-FIT repo root
+cd ~/ZIP-FIT
 
-# 2) Deinitialize PyPantograph (removes it from .git/config)
-git submodule deinit -f PyPantograph  # Stop tracking PyPantograph as an active submodule
+# 2) Deinitialize the submodule (removes it from .git/config)
+git submodule deinit -f PyPantograph
 
-# 3) Remove PyPantograph from Git's index (won't delete local directory by itself)
-git rm -f PyPantograph  # Unregister submodule path in the repo
+# 3) Remove the submodule from Git's index (this unregisters the submodule)
+git rm -f PyPantograph
 
-# 4) Remove the actual PyPantograph folder if still present on disk
-rm -rf PyPantograph/  # Physically delete the submodule directory
+# 4) Remove the actual submodule directory from disk
+rm -rf PyPantograph/
 
-# 5) Delete leftover metadata (.git/modules/PyPantograph)
-rm -rf .git/modules/PyPantograph  # Wipes submodule objects & refs from Git's internal tracking
+# 5) Delete leftover metadata for the submodule
+rm -rf .git/modules/PyPantograph
 
-# 6) Commit the removal so the repo no longer references PyPantograph
-git commit -m "Completely remove PyPantograph submodule"
+# 6) Remove the entire .gitmodules file (if ZIP-FIT is your only submodule)
+rm -f .gitmodules
+
+# 7) Commit the changes so the repository no longer references the submodule
+git commit -am "Completely remove PyPantograph submodule"
 ```
 
 ## 9. (Optional) Re-check ZIP-FIT
