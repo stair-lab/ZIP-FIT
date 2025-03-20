@@ -143,7 +143,7 @@ def pass_at_k(n: int, c: int, k: int) -> float:
     Complexity:
     -----------
     - Time complexity: O(k) for the loop, which is usually small (k <= 100).
-    - No large factorial or gamma function calls, so it’s efficient & stable for typical n.
+    - No large factorial or gamma function calls, so it's efficient & stable for typical n.
 
     Args:
         n (int): Total number of code completions generated for a problem.
@@ -177,7 +177,7 @@ def pass_at_k(n: int, c: int, k: int) -> float:
 
 def check_lean_compiles_strict(lean_snippet: str, server: Server, require_no_goals: bool = True) -> bool:
     """
-    Strictly checks whether a Lean 4 snippet “fully compiles” according to PyPantograph,
+    Strictly checks whether a Lean 4 snippet "fully compiles" according to PyPantograph,
     by analyzing the returned CompilationUnits from server.load_sorry(...).
     Note: if input is empty string "" we return False even if Lean accepts it because it means the LLM outputed something we couldn't parse most likely. 
 
@@ -186,44 +186,44 @@ def check_lean_compiles_strict(lean_snippet: str, server: Server, require_no_goa
     1) **Load the snippet**:
        We call `server.load_sorry(snippet)`, which parses the snippet as if it were
        a Lean 4 source file. Note that Lean can accept multiple definitions/
-       theorems in a single snippet, each mapped to a “compilation unit.”
+       theorems in a single snippet, each mapped to a "compilation unit."
 
-       - If a parse-level or “fatal” server error occurs, `load_sorry` can raise
+       - If a parse-level or "fatal" server error occurs, `load_sorry` can raise
          an exception. We catch that and return False.
 
     2) **Check each CompilationUnit**:
-       - Each “compilation unit” corresponds to an area in the snippet that Lean
-         recognized (like “theorem lemma1 : p -> p := by ...”).
-       - If `cu.messages` contains strings with “error” in them, we assume a
+       - Each "compilation unit" corresponds to an area in the snippet that Lean
+         recognized (like "theorem lemma1 : p -> p := by ...").
+       - If `cu.messages` contains strings with "error" in them, we assume a
          compilation error was detected. We return False.
 
     3) **Leftover goals**:
        - If `require_no_goals` is True, we also fail if `cu.goal_state` is not None.
-         This typically means Lean recognized a “sorry” or leftover proof hole,
+         This typically means Lean recognized a "sorry" or leftover proof hole,
          or some type error that was turned into a goal. 
-         e.g. “theorem lemma_fail : 2 + 2 = 5 := by rfl” might produce leftover
+         e.g. "theorem lemma_fail : 2 + 2 = 5 := by rfl" might produce leftover
          type mismatch goals if Lean tries to unify 4 with 5.
-       - If `require_no_goals` is False, we only fail on “hard” errors, ignoring
+       - If `require_no_goals` is False, we only fail on "hard" errors, ignoring
          partial or logically incorrect proofs as long as they parse.
 
     4) **Return**:
-       - True if we never encountered a parse error, no messages with “error,”
+       - True if we never encountered a parse error, no messages with "error,"
          and (optionally) no leftover goals (if `require_no_goals=True`).
        - False otherwise.
 
     Why This Matters
     ----------------
-    - Lean 4’s design allows partial type errors or leftover subgoals to
-      accumulate without halting compilation. So code might “parse” but still
-      be incomplete or contradictory. For a “strict” notion of success, we
-      treat leftover goals as a fail, but for “syntactic-only” we can ignore
+    - Lean 4's design allows partial type errors or leftover subgoals to
+      accumulate without halting compilation. So code might "parse" but still
+      be incomplete or contradictory. For a "strict" notion of success, we
+      treat leftover goals as a fail, but for "syntactic-only" we can ignore
       them. 
     - This approach ensures you can systematically measure how many LLM
-      completions produce truly “fully compiled” Lean 4 code.
+      completions produce truly "fully compiled" Lean 4 code.
 
     Args:
         snippet (str):
-          A string containing what we’d treat as top-level Lean 4 code.
+          A string containing what we'd treat as top-level Lean 4 code.
         server (Server):
           A PyPantograph server instance, e.g. `Server()`.
         require_no_goals (bool):
@@ -232,7 +232,7 @@ def check_lean_compiles_strict(lean_snippet: str, server: Server, require_no_goa
 
     Returns:
         bool:
-          True if no parse error, no “error” messages, and (if `require_no_goals=True`)
+          True if no parse error, no "error" messages, and (if `require_no_goals=True`)
           no leftover goals. Otherwise False.
 
     Example Usage
@@ -320,7 +320,7 @@ def run_lean4_comp_pass_k_unbiased_eval(
     server: Server,
     headers: Optional[List[str]] = None,  # If None, parse the headers from model_name generation
     k: int = 5,
-    num_samples: int = 30,
+    num_samples: int = 30, # the big N in pass@k - total number of completions generated
     dtype="bfloat16",
     eval_batch_size: int = 32,
     max_tokens: int = 512,
@@ -382,6 +382,8 @@ def run_lean4_comp_pass_k_unbiased_eval(
 
     # Now compute pass@k for each prompt individually
     pass_vals: List[float] = []
+    avg_pass_val: float = 0.0
+    var_pass_val: float = 0.0
     for completions_for_prompt in text_outputs:
         # Check which completions compile => c = sum of successes
         parsed_completions: List[str] = [parse_lean_completion(c) for c in completions_for_prompt]
@@ -389,7 +391,23 @@ def run_lean4_comp_pass_k_unbiased_eval(
         successes: List[bool] = [len(get_list_lean4_syntax_errors(lean_code, server)) == 0 for lean_code in mdl_code_with_true_header]
         c: int = sum(successes)
         pass_val: float = pass_at_k(num_samples, c, k)
+        # Update running average and variance
         pass_vals.append(pass_val)
+        avg_pass_val += pass_val / len(pass_vals)
+        var_pass_val = np.var(pass_vals)
+        std_pass_val = np.std(pass_vals)
+        conf_int_95 = 1.96 * std_pass_val / np.sqrt(len(pass_vals))
+        # Log
+        print(f'current pass@k(x,p) ({model_name}, {k=}, {num_samples=}): {pass_val=}')
+        print(f'avg pass@k(D,p) ({model_name}, {k=}, {num_samples=}): {avg_pass_val=}')
+        print(f'var pass@k(D,p) ({model_name}, {k=}, {num_samples=}): {var_pass_val=}')
+        print(f'std pass@k(D,p) ({model_name}, {k=}, {num_samples=}): {std_pass_val=}')
+        print(f'95% confidence interval pass@k(D,p) ({model_name}, {k=}, {num_samples=}): {conf_int_95=}')
+        wandb.log({"pass@k(x,p)": pass_val})
+        wandb.log({"avg pass@k(D,p)": avg_pass_val})
+        wandb.log({"var pass@k(D,p)": var_pass_val})
+        wandb.log({"std pass@k(D,p)": std_pass_val})
+        wandb.log({"95% confidence interval pass@k(D,p)": conf_int_95})
 
     # Finally, average pass@k across all prompts
     print(f'{len(pass_vals)=}') if debug else None
@@ -397,3 +415,119 @@ def run_lean4_comp_pass_k_unbiased_eval(
     del llm
     gc.collect()
     return float(np.mean(pass_vals)) if pass_vals else 0.0
+
+def run_lean4_comp_pass_k_unbiased_eval_log_per_completion(
+    prompts: List[str],
+    model_name: str, 
+    server: Server,
+    headers: Optional[List[str]] = None,  # If None, parse the headers from model_name generation
+    k: int = 5,
+    num_samples: int = 30, # the big N in pass@k - total number of completions generated
+    dtype: str = "bfloat16",
+    eval_batch_size: int = 32,
+    max_tokens: int = 512,
+    top_p: float = 0.95,       # Nucleus sampling: limits token choices to the smallest set whose cumulative probability is >= top_p (e.g., 95%).
+    top_k: int = 50,           # Top-k sampling: limits token choices to the top-k most likely tokens at each step (e.g., top 50 tokens).
+    temperature: float = 0.7,
+    seed: int = 42,
+    debug: bool = False,
+) -> float:
+    """
+    Evaluate pass@k for each docstring with per-batch logging: generate code with the model,
+    check how many compile under strict rules, then compute pass@k for each batch.
+    
+    This variant logs metrics after each batch of completions is generated, allowing for
+    real-time monitoring of model performance during longer evaluation runs.
+    """
+    # Check if wandb is available for logging
+    try:
+        import wandb
+        wandb_available: bool = wandb.run is not None
+    except ImportError:
+        wandb_available: bool = False
+        print("wandb not installed or not initialized, logging to console only")
+    
+    if model_name is not None:
+        llm = LLM(
+            model=model_name,             # create vLLM model from path or HF name
+            dtype=dtype,                  # specify float precision
+            trust_remote_code=True,       # allow custom model code
+            seed=seed,
+        )
+        sampling_params = SamplingParams(
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            max_tokens=max_tokens,
+            n=num_samples,
+        )
+
+        # For each batch of prompts, call llm.generate for paralellization
+        batched_prompts: List[List[str]] = [prompts[i:i + eval_batch_size] for i in range(0, len(prompts), eval_batch_size)]
+        print(f'Number of batches of prompts each of size {eval_batch_size}: {len(batched_prompts)}')
+
+        # For each batch of prompts, call llm.generate and immediately evaluate
+        # batch_num: Tracks which batch is currently being processed. Critical for:
+        # 1. Logging: Creates unique identifiers for metrics in wandb to prevent overwriting
+        # 2. Header matching: Calculates prompt_idx to correctly pair prompts with their headers
+        #   otherwise, the lean server won't get the code with the right header.
+        # 3. Progress tracking: Provides meaningful batch numbers in status updates
+        all_pass_vals: List[float] = []
+        for batch_num, batch_prompts in enumerate(tqdm.tqdm(batched_prompts, desc="Processing batches")):
+            # Generate completions for this batch (in parallel)
+            batch_outputs: List[RequestOutput] = llm.generate(batch_prompts, sampling_params)
+            # Get the pass@k for each completion in the batch
+            for i, request_out in enumerate(batch_outputs):
+                # Get all completions for this prompt
+                completions: List[str] = [completion.text for completion in request_out.outputs]
+                # Parse out llm completions
+                parsed_completions: List[str] = [parse_lean_completion(c) for c in completions]
+                
+                # Calculate the absolute prompt index in the original prompts list
+                absolute_prompt_idx: int = batch_num * eval_batch_size + i
+                # Add headers for each completion so lean doesn't give us errors by default (false negatives)
+                if headers is None:
+                    prompt_headers: List[str] = [""] * len(parsed_completions)
+                else:
+                    # Use the header corresponding to this prompt
+                    prompt_headers: List[str] = [headers[absolute_prompt_idx]] * len(parsed_completions)
+                # Combine headers with parsed completions
+                mdl_code_with_header: List[str] = [f'{header}\n\n{parsed_comp}' for parsed_comp, header in zip(parsed_completions, prompt_headers)]
+                
+                # Check which completions compile
+                successes: List[bool] = [len(get_list_lean4_syntax_errors(lean_code, server)) == 0 for lean_code in mdl_code_with_header]
+                c: int = sum(successes)
+                
+                # Calculate pass@k for this prompt
+                pass_val: float = pass_at_k(num_samples, c, k)
+                all_pass_vals.append(pass_val)
+                
+                # Calculate running statistics after each prompt
+                avg_pass: float = np.mean(all_pass_vals)
+                std_pass: float = np.std(all_pass_vals, ddof=1)
+                
+                # Log per-prompt metrics with running statistics
+                prompt_log = {
+                    "prompt_idx": absolute_prompt_idx,
+                    "pass@k(x,p)": pass_val,
+                    "correct_count": c,
+                    "avg_pass@k(D,p)": avg_pass,
+                    "std_pass@k(D,p)": std_pass,
+                }
+                if wandb_available:
+                    wandb.log(prompt_log)
+                if debug:
+                    print(f"Prompt {absolute_prompt_idx}: pass@k={pass_val}, correct={c}/{num_samples}")
+    else:
+        raise ValueError("Model is None, so we can't do pass@k with the given list of strings")
+    # Print summary to console
+    final_avg_pass_val: float = np.mean(all_pass_vals)
+    print(f"\nFinal Results:")
+    print(f"Average pass@k: {final_avg_pass:.4f}")
+    print(f"Total problems evaluated: {len(all_pass_vals)}")
+
+    # Clean up
+    import gc
+    del llm
+    gc.collect()
+    return final_avg_pass_val
