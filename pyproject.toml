@@ -46,6 +46,7 @@ dependencies = [
     "bitsandbytes",
     "einops",
     "sentencepiece",
+    "brotli",
     "lm_eval[vllm]",
     "vllm==0.6.4.post1",
     "antlr4-python3-runtime==4.11",
@@ -59,6 +60,10 @@ dev = [
     "mypy>=0.910",
 ]
 
+[tool.setuptools]
+package-dir = {"" = "zip_fit"}
+
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["zip_fit", "zip_fit.*"]
+where = ["zip_fit"]
+include = ["*"]
+exclude = ["*.tests", "*.tests.*", "tests.*", "tests"]

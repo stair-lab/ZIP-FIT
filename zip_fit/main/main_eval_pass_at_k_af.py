@@ -1,31 +1,40 @@
-def main(config: dict = {}) -> None:
-    """
-    1) Seeds RNG
-    2) Creates Pantograph Server
-    3) Tests manual snippets for partial compile checks
-    4) Optionally tests a trivial pass@k with GPT-2
+import wandb 
+import os
+import time
+import tqdm
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+from typing import List
 
-    If snippet3 is STILL returning True, it likely means the Lean environment
-    isn't producing type errors or leftover goals for "2+2=5 => rfl".
-    You may need to adapt your Lean build or parse approach further.
+from huggingface_hub import create_repo, upload_file, whoami, login
+
+from pantograph import Server
+
+from utils import seed_everything
+from metrics.lean4_comp_pass_at_k import run_lean4_comp_pass_k_unbiased_eval
+
+def main_eval_lean4_model_performance_pass_at_k(config: dict = {}) -> None:
     """
-    seed_everything(42)
-    # export CUDA_VISIBLE_DEVICES=1; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
-    # export CUDA_VISIBLE_DEVICES=2; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
-    # export CUDA_VISIBLE_DEVICES=3; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
-    # export CUDA_VISIBLE_DEVICES=4; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
-    # export CUDA_VISIBLE_DEVICES=5; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
-    # export CUDA_VISIBLE_DEVICES=6; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
-    # export CUDA_VISIBLE_DEVICES=7; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
-    # os.environ['CUDAVISIBLE_DEVICES'] = '3'  # choose GPU
+    Evaluates language model performance on Lean4 theorem statement translation using pass@k methodology.
+
+    To run (without indent so I can copy-paste):
+conda activate zip_fit; export CUDA_VISIBLE_DEVICES=1; python /lfs/skampere1/0/brando9/ZIP-FIT/zip_fit/lean_pass_k_unbiased.py 
+    
+    Parameters:
+        config (dict): Configuration dictionary that can override default parameters
+        
+    Returns:
+        None: Results are printed to console and logged with wandb if configured
+    """
+    seed_everything(config.get('seed', 42))
+
     # 0) PyPantograph Lean4 Server
-    from pantograph import Server
     server = Server(imports=["Mathlib", "Init"], project_path=os.path.expanduser("~/mathlib4"))
     # 1) Manual snippet test
     # test_manual_snippets(server)
 
     # 2) Log In
-    from huggingface_hub import login, whoami
     key_file_path = "~/keys/master_hf_token.txt"
     key_file_path = os.path.abspath(os.path.expanduser(key_file_path))
     with open(key_file_path, "r", encoding="utf-8") as f:
@@ -36,8 +45,6 @@ def main(config: dict = {}) -> None:
     print(f"Currently logged in as: {user_info['name']}\n")
 
     # 3) Model pass@k test (toy)
-    from huggingface_hub import create_repo, upload_file, whoami
-    whoami()
     model_name = 'gpt2'
     model_name = 'UDACA/math-gpt2-zipfit'
     model_name = 'UDACA/math-gpt2-dsir'
@@ -113,40 +120,27 @@ def main(config: dict = {}) -> None:
 
 def main_experiment_pass_k_vs_N_config(config: dict = {}):
     """
-    Runs the pass@k experiment for a series of N values defined in the config,
-    repeating each experiment a specified number of times to measure variance,
-    and then plots:
-      (1) Pass@k (with 95% CIs) versus N, and 
-      (2) Average evaluation time (with 95% CIs) versus N.
-
-    Requirements:
-    -----------------
-    1. Read experimental parameters from the config dictionary:
-         - 'n_start': Starting value for N (number of completions generated per prompt).
-         - 'n_end': Ending value for N.
-         - 'num_points': Number of points between n_start and n_end (if not provided, default is 10).
-         - 'num_reps': Number of repetitions per N to estimate variance.
-         - 'k': The k value for pass@k (e.g., pass@5).
-         - 'plot_title': Title for the plots.
-         - 'model_name': The model identifier used for code generation.
-         - 'seed': Base seed for random number generators.
-    2. Load prompts and gold headers from a dataset.
-    3. Initialize a Lean 4 server using PyPantograph.
-    4. For each N value (generated via np.linspace and rounded to integer):
-         - Run the evaluation num_reps times.
-         - For each repetition, update the random seed (base_seed plus an offset) to ensure variability.
-         - Measure both the pass@k score and the evaluation time for that repetition.
-    5. Compute mean, standard deviation, and 95% confidence intervals (CIs) for:
-         - Pass@k scores, and
-         - Evaluation times.
-    6. Print summary results during the loop and detailed results at the end.
-    7. Plot:
-         - N (x-axis) versus average pass@k (y-axis) with 95% CI error bars.
-         - N (x-axis) versus average evaluation time (y-axis) with 95% CI error bars.
-    8. Log the plots to wandb.
+    Conducts systematic pass@k experiments to analyze how model performance and evaluation time scale with sample size.
+    
+    This experiment:
+    1) Evaluates model performance across different sample sizes (N values)
+    2) Repeats each experiment multiple times to measure variance
+    3) Computes confidence intervals for both performance and runtime
+    4) Generates visualizations of the results
+    5) Logs all metrics and plots to wandb
+    
+    Configuration parameters:
+      - n_start: Starting value for sample size N
+      - n_end: Ending value for sample size N
+      - num_points: Number of evenly spaced N values to evaluate
+      - num_reps: Number of repetitions per N to estimate variance
+      - k: The k value for pass@k evaluation metric
+      - plot_title: Title for generated plots
+      - model_name: Model identifier to evaluate
+      - seed: Base random seed for reproducibility
     
     Returns:
-         None
+        None: Results are saved to disk and logged to wandb
     """
     import numpy as np
     import matplotlib.pyplot as plt
@@ -246,7 +240,6 @@ def main_experiment_pass_k_vs_N_config(config: dict = {}):
     
     # ---------------------------------------------------------------------
     # Initialize the Lean 4 server via PyPantograph.
-    from pantograph import Server
     server = Server(imports=["Mathlib", "Init"], project_path=os.path.expanduser("~/mathlib4"))
     
     print("Starting experiments...")
@@ -382,12 +375,12 @@ def _main(**kwargs):
     tmux_sess_num = None
     kwargs = kwargs | {'today': today, 'tmux_sess_num': tmux_sess_num, 'hostname': gethostname()}
     run_name = f'{kwargs}' 
-    run = wandb.init(mode=kwargs.get('mode', 'online'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
-    # run = wandb.init(mode=kwargs.get('mode', 'dryrun'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
+    # run = wandb.init(mode=kwargs.get('mode', 'online'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
+    run = wandb.init(mode=kwargs.get('mode', 'dryrun'), project="zip-fit-pass-at-k-af", name=run_name, save_code=True, config=kwargs)
     wandb.save(__file__) # save current code now, don't wait to wandb.finish, also useful: wandb.save("*.py") # upload all .py files in current directory
     print(f'Kwargs to run:\n{kwargs}')
-    # main(kwargs)
-    main_experiment_pass_k_vs_N_config(kwargs)
+    main_eval_lean4_model_performance_pass_at_k(kwargs)
+    # main_experiment_pass_k_vs_N_config(kwargs)
     run.alert(title="Run Completed", text=f"Run finished, run url: {run.get_url()}")
     print(f'{run.get_url()=}')
     wandb.finish()
