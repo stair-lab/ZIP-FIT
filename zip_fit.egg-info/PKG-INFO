@@ -1,4 +1,4 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.4
 Name: zip_fit
 Version: 1.0.8
 Summary: Data Selection via Compression-Based Alignment
@@ -247,6 +247,7 @@ Requires-Dist: pytest>=6.0; extra == "dev"
 Requires-Dist: flake8>=3.9; extra == "dev"
 Requires-Dist: black>=21.0; extra == "dev"
 Requires-Dist: mypy>=0.910; extra == "dev"
+Dynamic: license-file
 
 # Data Selection for Language Models via Compression
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -364,6 +365,7 @@ pip install -e ~/ZIP-FIT
 If you want vLLM for flash attention, you can install it via `lm_eval[vllm]`:
 
 ```bash
+# If the bellow are not already there:
 pip install lm_eval[vllm]
 # If you find version issues, pin it:
 pip install vllm==0.6.4.post1
@@ -374,6 +376,10 @@ pip install antlr4-python3-runtime==4.11
 pip list | grep lm_eval
 pip list | grep vllm
 pip list | grep antlr4
+# Expected output:
+# lm_eval                           0.4.8
+# vllm                              0.6.4.post1
+# antlr4-python3-runtime            4.11.0
 ```
 
 ## 3. Install Lean (Via `elan`)
