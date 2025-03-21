@@ -161,12 +161,13 @@ elan toolchain install leanprover/lean4:v4.15.0
 
 # Set your default toolchain to 4.15.0 (so you don’t re-download another version later)
 elan default leanprover/lean4:v4.15.0
+# TODO: how robust this elan default
 
 # Verify the installed Lean version
 lean --version  
 # Lean (version 4.15.0, x86_64-unknown-linux-gnu, commit 11651562caae, Release)
 
-# Check Lake version (Lake is Lean’s build system and package manager)
+# Check Lake version (Lake is Lean’s build system and package manager) "Lean's pip"
 lake --version
 # Lake version 5.0.0-1165156 (Lean version 4.15.0)
 
@@ -203,9 +204,7 @@ lake exe cache get
 # Warning: Very slow
 (cd ~/mathlib4_15_0 && lake test)
 # ⣿ [?/?] Computing build job
-
-
-
+# TODO: checks if Mathlib4 was installed correctly, can we do a faster thing?
 ```
 
 ## 4. Prepare PyPantograph before Pip Installing it
