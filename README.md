@@ -171,8 +171,9 @@ lean --version
 lake --version
 # Lake version 5.0.0-1165156 (Lean version 4.15.0)
 
-# test lean on it's own
-echo 'def main : IO Unit := IO.println "Lean works!"' | lean --run --stdin
+# Run Lean within the Lake environment (which sets the search path to include mathlib) to test that mathlib4 is installed:
+echo 'def main : IO Unit := IO.println "Lean works!"' | lake env lean --run --stdin
+## doesn't work idk why echo 'def main : IO Unit := IO.println "Lean works!"' | lean --run --stdin
 # Sample output: Lean works!
 
 
@@ -194,17 +195,37 @@ git fetch --all
 
 # Switch to the release tag matching PyPantograph
 git checkout releases/v4.15.0
+git brach # check branch
 cat lean-toolchain
 # leanprover/lean4:v4.15.0
 
 # Fetch cache .olean files for the current commit to speed up the build process
 lake exe cache get
+# No files to download
+# Decompressing 5826 file(s)
+# Unpacked in 8795 ms
+# Completed successfully!
 
 # Run the mathlib4 test suite in the mathlib4_15_0 directory to verify everything works correctly
 # Warning: Very slow
 (cd ~/mathlib4_15_0 && lake test)
 # ⣿ [?/?] Computing build job
-# TODO: checks if Mathlib4 was installed correctly, can we do a faster thing?
+cd ~/mathlib4_15_0 && lake build
+# Build completed successfully.
+# real    0m16.570s
+# user    0m6.518s
+# sys     0m12.284s
+
+# TODO: one liner test for mathlib
+#   --> https://github.com/stanford-centaur/PyPantograph/issues/89
+#   --> https://proofassistants.stackexchange.com/questions/4848/quick-one-liner-to-verify-mathlib4-installation-eg-with-lean-4-15-0
+#   --> https://chatgpt.com/c/67da423c-e384-8001-a934-eadf6aca7b11
+# since there is no lean project specified here, this cannot be tested but it woulb like:
+cd ~/veribench/lean_src_proj
+echo -e 'import Mathlib.Topology.Basic\n#check TopologicalSpace' | lake env lean --stdin
+# Output: TopologicalSpace.{u} (X : Type u) : Type u
+
+# For a pypantograph test go bellow, search Server( in this file
 ```
 
 ## 4. Prepare PyPantograph before Pip Installing it
@@ -330,6 +351,16 @@ python3 -m pantograph.server
 # Ran 11 tests in 7.224s
 
 # OK
+
+# Basic PyPantograph import
+python -c "from pantograph import Server; server = Server(imports=['Init']); print(server)"
+
+cd ~/mathlib4_15_0
+find . -name "*.olean"
+
+# PyPantograph Import with local Mathlib
+python -c "import os; from pantograph import Server; server = Server(imports=['Mathlib'], project_path=os.path.expanduser('~/mathlib4_15_0')); print(server)"
+python -c "import os; from pantograph import Server; server = Server(imports=['Mathlib', 'Init'], project_path=os.path.expanduser('~/mathlib4_15_0'), timeout=240); print(server)"
 
 # Run basic lean4 test with mathlib4
 python ~/ZIP-FIT/zip_fit/metrics/tests/basic_lean4_tests.py

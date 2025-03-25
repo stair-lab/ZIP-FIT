@@ -14,7 +14,7 @@ from pantograph import Server
 from utils import seed_everything
 from metrics.lean4_comp_pass_at_k import run_lean4_comp_pass_k_unbiased_eval
 
-from zip_fit.metrics.lean4_comp_pass_at_k import run_lean4_comp_pass_k_unbiased_eval_log_per_completion
+from metrics.lean4_comp_pass_at_k import run_lean4_comp_pass_k_unbiased_eval_log_per_completion
 
 def main_eval_lean4_model_performance_pass_at_k(config: dict = {}) -> None:
     """
@@ -32,7 +32,9 @@ conda activate zip_fit; export CUDA_VISIBLE_DEVICES=1; python /lfs/skampere1/0/b
     seed_everything(config.get('seed', 42))
 
     # 0) PyPantograph Lean4 Server
-    server = Server(imports=["Mathlib", "Init"], project_path=os.path.expanduser("~/mathlib4_15_0"))
+    server = Server(imports=["Mathlib", "Init"], 
+                    project_path=os.path.expanduser("~/mathlib4_15_0"), 
+                    timeout=config.get('timeout', None))
     # 1) Manual snippet test
     # test_manual_snippets(server)
 
