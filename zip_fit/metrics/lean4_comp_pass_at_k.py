@@ -68,39 +68,7 @@ from vllm import RequestOutput
 from pantograph.server import Server
 from pantograph.data import CompilationUnit, TacticInvocation
 
-def parse_lean_completion(llm_output: str) -> str:
-    """
-    Extracts the Lean theorem from the LLM output, which is enclosed between '##' markers.
-    Returns the extracted theorem as a string.
-
-    - Uses regex to find the first occurrence of text between '##' markers.
-    - If no match is found, returns an empty string.
-
-    Example:
-    ----------
-    Input:
-        "
-        natural language statement:
-        /-- Expand the following expression: $7(3y+2)$ Show that it is 21y+14.-/
-        formal language statement:##
-        theorem mathd_algebra_182 (y : ℂ) : 7 * (3 * y + 2) = 21 * y + 14 := by
-        ##
-        "
-
-    Output:
-        "theorem mathd_algebra_182 (y : ℂ) : 7 * (3 * y + 2) = 21 * y + 14 := by"
-    """
-    # Regex Breakdown:
-    # r'##(.*?)##'
-    # - ## : Matches the literal '##' at the start
-    # - (.*?) : Captures any text in between (non-greedy to stop at the first closing '##')
-    # - ## : Matches the closing '##'
-    # - re.DOTALL : Allows the match to span multiple lines
-    match = re.search(r'##(.*?)##', llm_output, re.DOTALL)
-
-    # If a match is found, return the captured text (group 1) after stripping spaces
-    return match.group(1).strip() if match else "aslfasfj 134ljdf by := :="
-
+from lean4_utils import parse_lean_completion, get_list_lean4_syntax_errors
 
 def pass_at_k(n: int, c: int, k: int) -> float:
     """
@@ -109,50 +77,6 @@ def pass_at_k(n: int, c: int, k: int) -> float:
 
         pass@k = 1 - ( (n-c choose k) / (n choose k) )
                 = 1 - ∏(i=0 to k-1) [ (n - c - i) / (n - i) ]
-
-    Explanation & Implementation Details:
-    -------------------------------------
-    1) **Combinatorial Definition**:
-       The original definition in the Codex paper is:
-         pass@k = 1 - [ (n-c choose k) / (n choose k) ].
-       This means: given `n` generated completions, and `c` of them are correct,
-       the probability that "all top k" picks are incorrect is `(n-c choose k) / (n choose k)`.
-       So pass@k is `1 -` that probability.
-
-    2) **Why a Product Form?**:
-       Directly computing binomial coefficients `(n-c choose k)` and `(n choose k)` can lead to
-       large factorial terms or floating-point overflow for bigger n, c, k. The product form:
-
-          ( (n-c choose k) / (n choose k) )
-          = Π (i=0..k-1)  ( (n-c-i) / (n-i) )
-
-       avoids computing large factorials. We multiply smaller ratios that stay
-       closer to 1.0 numerically. 
-
-    3) **Edge Cases**:
-       - If `c=0`, no correct completions => pass@k=0.
-       - If `c >= n`, all completions are correct => pass@k=1.
-       - If `(n - c) < k`, we can't fill k slots with incorrect => pass@k=1.
-
-    4) **Numeric Stability**:
-       Because we multiply a sequence of terms `(n-c-i)/(n-i)` each roughly in [0,1], 
-       we avoid factorial explosion or large intermediate sums. Multiplying these 
-       fractions is more stable for up to typical values of n. 
-       Finally, pass@k is `1 - product_of_those_fractions`.
-
-    Complexity:
-    -----------
-    - Time complexity: O(k) for the loop, which is usually small (k <= 100).
-    - No large factorial or gamma function calls, so it's efficient & stable for typical n.
-
-    Args:
-        n (int): Total number of code completions generated for a problem.
-        c (int): Number of correct completions among those n.
-        k (int): "Top-k" threshold for pass@k.
-
-    Returns:
-        float: pass@k in [0.0, 1.0], capturing the fraction of problems for
-               which at least one of the top-k completions is correct.
     """
     # Edge cases for immediate short-circuit:
     if c == 0:        # no correct completions
@@ -174,147 +98,7 @@ def pass_at_k(n: int, c: int, k: int) -> float:
 
     return 1.0 - product_term
 
-
-def check_lean_compiles_strict(lean_snippet: str, server: Server, require_no_goals: bool = True) -> bool:
-    """
-    Strictly checks whether a Lean 4 snippet "fully compiles" according to PyPantograph,
-    by analyzing the returned CompilationUnits from server.load_sorry(...).
-    Note: if input is empty string "" we return False even if Lean accepts it because it means the LLM outputed something we couldn't parse most likely. 
-
-    Steps & Rationale
-    -----------------
-    1) **Load the snippet**:
-       We call `server.load_sorry(snippet)`, which parses the snippet as if it were
-       a Lean 4 source file. Note that Lean can accept multiple definitions/
-       theorems in a single snippet, each mapped to a "compilation unit."
-
-       - If a parse-level or "fatal" server error occurs, `load_sorry` can raise
-         an exception. We catch that and return False.
-
-    2) **Check each CompilationUnit**:
-       - Each "compilation unit" corresponds to an area in the snippet that Lean
-         recognized (like "theorem lemma1 : p -> p := by ...").
-       - If `cu.messages` contains strings with "error" in them, we assume a
-         compilation error was detected. We return False.
-
-    3) **Leftover goals**:
-       - If `require_no_goals` is True, we also fail if `cu.goal_state` is not None.
-         This typically means Lean recognized a "sorry" or leftover proof hole,
-         or some type error that was turned into a goal. 
-         e.g. "theorem lemma_fail : 2 + 2 = 5 := by rfl" might produce leftover
-         type mismatch goals if Lean tries to unify 4 with 5.
-       - If `require_no_goals` is False, we only fail on "hard" errors, ignoring
-         partial or logically incorrect proofs as long as they parse.
-
-    4) **Return**:
-       - True if we never encountered a parse error, no messages with "error,"
-         and (optionally) no leftover goals (if `require_no_goals=True`).
-       - False otherwise.
-
-    Why This Matters
-    ----------------
-    - Lean 4's design allows partial type errors or leftover subgoals to
-      accumulate without halting compilation. So code might "parse" but still
-      be incomplete or contradictory. For a "strict" notion of success, we
-      treat leftover goals as a fail, but for "syntactic-only" we can ignore
-      them. 
-    - This approach ensures you can systematically measure how many LLM
-      completions produce truly "fully compiled" Lean 4 code.
-
-    Args:
-        snippet (str):
-          A string containing what we'd treat as top-level Lean 4 code.
-        server (Server):
-          A PyPantograph server instance, e.g. `Server()`.
-        require_no_goals (bool):
-          If True, leftover subgoals => fail. If False, leftover subgoals do not
-          matter for success/failure.
-
-    Returns:
-        bool:
-          True if no parse error, no "error" messages, and (if `require_no_goals=True`)
-          no leftover goals. Otherwise False.
-
-    Example Usage
-    -------------
-    >>> from pantograph.server import Server
-    >>> server = Server()
-    >>> snippet = '''theorem lemma_success : 2 = 2 := by rfl'''
-    >>> check_lean_compiles_strict(snippet, server)
-    True
-
-    >>> snippet2 = '''theorem lemma_fail : 2 + 2 = 5 := by rfl'''
-    >>> check_lean_compiles_strict(snippet2, server)
-    False  # leftover goals or error messages
-    """
-    # If snippet is empty, we consider it invalid => return False
-    if not lean_snippet.strip():
-        return False
-
-    try:
-        # Executes the compiler on a Lean file. For each compilation unit, either
-        # return the gathered `sorry` s, or a list of messages indicating error.
-        compilation_units = server.load_sorry(lean_snippet)
-    except Exception:
-        # If the server raised an exception, it's likely a parse/fatal error => fail
-        return False
-
-    # Check each compilation unit for error messages or leftover goals
-    for compilation_unit in compilation_units:
-        # If any message includes 'error', we consider it a compile failure
-        for msg in compilation_unit.messages:
-            if 'error' in msg.lower():
-                return False
-
-        # If user demands no leftover goals, check if any goals remain
-        if require_no_goals and (compilation_unit.goal_state is not None):
-            return False
-
-    # If we reach here, no errors and (optionally) no leftover goals => success
-    return True
-
-
-def get_list_lean4_syntax_errors(lean_snippet: str, server: Server, debug: bool = False) -> List[str]:
-    r"""
-    Check a Lean 4 code snippet for *parse/syntax errors* (ignore "unsolved goals").
-
-    Implementation:
-      - We call `server.load_sorry(lean_snippet)`, which compiles the snippet.
-      - For each message in the returned compilation units:
-        * If the line contains "error:" (case-insensitive is optional),
-          we check if it also has "unsolved goals" — if so, skip it, because
-          that's not a parse/lexical error.
-        * Otherwise, count it as a syntax error.
-
-    Returns the count of syntax/parse errors found.
-
-    Example
-    -------
-    >>> server = Server(imports=["Mathlib"], project_path="~/mathlib4")
-    >>> code = "theorem two_eq_two : 2 = 2 := by"  # incomplete
-    >>> num_errs = check_lean_compiles_syntax_only(server, code)
-    >>> print(num_errs)  # 1 or more
-    """
-    try:
-        compilation_units = server.load_sorry(lean_snippet)
-    except:
-        print(f'\n----{lean_snippet=}----\n') if debug else None
-        import traceback
-        traceback.print_exc() if debug else None
-        return [f'PyPantograph threw some exception: {traceback.format_exc()}']
-
-    syntax_errors: List[str] = []
-    for comp_unit in compilation_units:
-        for msg in comp_unit.messages:
-            # Quick check: if 'error:' is in the message, but not "unsolved goals"
-            # => it's likely a parse/lexical error.
-            # (In practice, we often see strings like "<anonymous>:1:5: error: ...")
-            if "error:" in msg and ("unsolved goals" not in msg.lower()):
-                syntax_errors.append(msg)
-
-    return syntax_errors
-
-def run_lean4_comp_pass_k_unbiased_eval(
+def lean4_comp_pass_at_k_unbiased(
     prompts: List[str],
     model_name: str, 
     server: Server,
@@ -331,8 +115,7 @@ def run_lean4_comp_pass_k_unbiased_eval(
     debug: bool = False,
 ) -> float:
     """
-    Evaluate pass@k for each docstring: generate code with GPT-2,
-    check how many compile under strict rules, then compute pass@k.
+    Evaluate pass@k with lean4 compilation for each docstring completed with LM.
     """
     if model_name is not None:
         llm = LLM(
@@ -416,7 +199,7 @@ def run_lean4_comp_pass_k_unbiased_eval(
     gc.collect()
     return float(np.mean(pass_vals)) if pass_vals else 0.0
 
-def run_lean4_comp_pass_k_unbiased_eval_log_per_completion(
+def lean4_comp_pass_at_k_unbiased_log_per_completion(
     prompts: List[str],
     model_name: str, 
     server: Server,

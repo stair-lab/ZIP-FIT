@@ -355,12 +355,8 @@ python3 -m pantograph.server
 # Basic PyPantograph import
 python -c "from pantograph import Server; server = Server(imports=['Init']); print(server)"
 
-cd ~/mathlib4_15_0
-find . -name "*.olean"
-
 # PyPantograph Import with local Mathlib
-python -c "import os; from pantograph import Server; server = Server(imports=['Mathlib'], project_path=os.path.expanduser('~/mathlib4_15_0')); print(server)"
-python -c "import os; from pantograph import Server; server = Server(imports=['Mathlib', 'Init'], project_path=os.path.expanduser('~/mathlib4_15_0'), timeout=240); print(server)"
+python -c "import os; from pantograph import Server; server = Server(imports=['Mathlib', 'Init'], project_path=os.path.expanduser('~/mathlib_4_15_0_lfs'), timeout=300); print(server)"
 
 # Run basic lean4 test with mathlib4
 python ~/ZIP-FIT/zip_fit/metrics/tests/basic_lean4_tests.py
