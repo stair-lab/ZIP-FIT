@@ -131,7 +131,6 @@ def lean4_comp_pass_at_k_unbiased(
             max_tokens=max_tokens,  # Maximum number of tokens (including prompt + generated tokens) for each completion.
             n=num_samples,          # Number of completions to generate per prompt.
         )
-
         # For each batch of prompts, call llm.generate for paralellization
         batched_prompts = [prompts[i:i + eval_batch_size] for i in range(0, len(prompts), eval_batch_size)]
         print(f'Number of batches of prompts each of size {eval_batch_size}: {len(batched_prompts)}')
@@ -144,9 +143,6 @@ def lean4_comp_pass_at_k_unbiased(
         print(f'Number of outputs/completions: {len(outputs)} (should be {num_samples}*{len(prompts)} = {num_samples*len(prompts)})') if debug else None
         print(f'Number of prompts: {len(prompts)}') if debug else None
 
-        # Each element in outputs is a RequestOutput with up to n completions in .outputs
-        # We want a final structure: text_outputs[i] = list of all completions for prompts[i]
-        # So we gather them below:
         text_outputs: List[List[str]] = []
         for request_out in outputs:  
             # request_out.outputs is a list of n completions
@@ -157,8 +153,6 @@ def lean4_comp_pass_at_k_unbiased(
         # print(f'{text_outputs=}') if debug else None
         assert len(text_outputs) == len(prompts), ( f"Mismatch in number of outputs ({len(text_outputs)}) vs. prompts ({len(prompts)})")
     else:
-        # If model is None, then the intention is to do pass @ k with the given list of strings
-        # For each prompt put it in a list as if it was the only completion produced by model
         text_outputs: List[List[str]] = [[prompt] for prompt in prompts]
         print(f'{text_outputs=}')
         raise ValueError("Model is None, so we can't do pass@k with the given list of strings")
@@ -217,7 +211,7 @@ def lean4_comp_pass_at_k_unbiased_log_per_completion(
 ) -> float:
     """
     Evaluate pass@k for each docstring with per-batch logging: generate code with the model,
-    check how many compile under strict rules, then compute pass@k for each batch.
+    check how many compile, then compute pass@k for each batch.
     
     This variant logs metrics after each batch of completions is generated, allowing for
     real-time monitoring of model performance during longer evaluation runs.
