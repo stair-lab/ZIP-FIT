@@ -21,7 +21,7 @@ class ZIPFIT:
         target_load_fn: Optional[Callable[[str], List[str]]] = None, 
         target_parse_fn: Optional[Callable[[dict], str]] = None, 
         output_file: str = "top_k_sequences.jsonl",
-        compression_algorithm: str = 'gzip',
+        compression_algorithm: str = 'lz4',
         compress_level: int = 0,
         cache_size: int = 100000  # Add cache size limit
     ):
@@ -132,6 +132,51 @@ class ZIPFIT:
         # Sort by average similarity and take top k
         top_k = sorted(avg_similarities, key=lambda x: x[1], reverse=True)[:self.k]
         return top_k
+    
+    def compute_zipfit_alignment(self, texts_a: List[str], texts_b: List[str]) -> float:
+        """
+        Compute the average compression-based alignment score between two sets of texts.
+        
+        This function measures how well two sets of texts align with each other using
+        the ZIPFIT compression-based similarity metric. Higher scores indicate
+        stronger alignment between the text sets.
+        
+        Args:
+            texts_a: First collection of text strings
+            texts_b: Second collection of text strings
+            
+        Returns:
+            float: Alignment score between 0-1, where 1 indicates perfect alignment
+        """
+        # Validate inputs
+        if not texts_a or not texts_b:
+            return 0.0
+        
+        print(f"Computing compression sizes for {len(texts_a)} and {len(texts_b)} texts...")
+        # Directly compute compression sizes without multiprocessing
+        compressed_a = [self.compress(text) for text in texts_a]
+        compressed_b = [self.compress(text) for text in texts_b]
+        
+        print("Computing alignment scores...")
+        # Calculate similarities directly
+        total_alignment = 0.0
+        count = 0
+        
+        for i, text_a in enumerate(texts_a):
+            for j, text_b in enumerate(texts_b):
+                # Create args tuple similar to the one passed to self.similarity
+                args = (text_a, text_b, compressed_a[i], compressed_b[j], i)
+                _, similarity = self.similarity(args)
+                total_alignment += similarity
+                count += 1
+        
+        # Return the average alignment score
+        if count > 0:
+            avg_alignment = total_alignment / count
+            print(f"ZIPFIT alignment score: {avg_alignment:.4f}")
+            return avg_alignment
+        else:
+            return 0.0
 
     def run(self):
         print("Loading datasets...")
@@ -146,3 +191,5 @@ class ZIPFIT:
         with open(self.output_file, 'w') as f:
             for text, score in top_k:
                 f.write(json.dumps({'text': text}) + '\n')
+
+        
