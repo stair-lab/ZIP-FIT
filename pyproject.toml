@@ -61,9 +61,10 @@ dev = [
 ]
 
 [tool.setuptools]
-package-dir = {"" = "zip_fit"}
+# package-dir = {"" = "zip_fit"}
 
 [tool.setuptools.packages.find]
-where = ["zip_fit"]
-include = ["*"]
+# where = ["zip_fit"]
+include = ["zip_fit*"]
+# include = ["*"]
 exclude = ["*.tests", "*.tests.*", "tests.*", "tests"]

@@ -1,4 +1,5 @@
-from zip_fit import compute_zipfit_alignment
+# TODO: doesn't work yet
+# from zip_fit import compute_zipfit_alignment
 import sys
 print(sys.path)
 breakpoint()

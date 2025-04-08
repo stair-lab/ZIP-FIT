@@ -239,6 +239,7 @@ Requires-Dist: peft
 Requires-Dist: bitsandbytes
 Requires-Dist: einops
 Requires-Dist: sentencepiece
+Requires-Dist: brotli
 Requires-Dist: lm_eval[vllm]
 Requires-Dist: vllm==0.6.4.post1
 Requires-Dist: antlr4-python3-runtime==4.11
@@ -357,6 +358,7 @@ git checkout -b bm_dev origin/bm_dev
 # Display branch details, including local/remote tracking and commit differences
 git branch -vv
 # Install ZIP-FIT in editable mode, so local changes are reflected immediately
+conda activate zip_fit
 pip install -e ~/ZIP-FIT
 ```
 
@@ -382,9 +384,17 @@ pip list | grep antlr4
 # antlr4-python3-runtime            4.11.0
 ```
 
-## 3. Install Lean (Via `elan`)
+## 3. Install Lean (Via `elan`) & Mathlib4 with version you need for PyPantograph
 
+Useful chat: https://chatgpt.com/c/67da423c-e384-8001-a934-eadf6aca7b11 
+
+Note: PyPantograph's submodule is pinned to Lean 4.15.0. 
+If you want to import `Mathlib` inside PyPantograph, 
+your local Mathlib4 **must** be the same Lean version.
+
+**Note**: This sets up Lean for your user via elan, which will manage multiple Lean versions as needed.
 ```bash
+# Install elan (Lean’s toolchain manager, manages diff Lean version) which will install Lean and Lake.
 curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
 
 # If ~/.bashrc doesn't have ~/.elan, add it:
@@ -394,17 +404,84 @@ export PATH="$HOME/.elan/bin:$PATH"
 echo 'export PATH="$HOME/.elan/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
-# Check versions
+# (elan is Lean's toolchain manager for installing and managing Lean versions) 
 elan --version
-lean --version
-lake --version
-```
+# elan 4.0.0 (bb75b50d2 2025-01-30)
 
-**Note**: This sets up Lean for your user via elan, which will manage multiple Lean versions as needed.
+# Install the 4.15.0 toolchain via elan
+elan toolchain install leanprover/lean4:v4.15.0
+
+# Set your default toolchain to 4.15.0 (so you don’t re-download another version later)
+elan default leanprover/lean4:v4.15.0
+# TODO: how robust this elan default
+
+# Verify the installed Lean version
+lean --version  
+# Lean (version 4.15.0, x86_64-unknown-linux-gnu, commit 11651562caae, Release)
+
+# Check Lake version (Lake is Lean’s build system and package manager) "Lean's pip"
+lake --version
+# Lake version 5.0.0-1165156 (Lean version 4.15.0)
+
+# Run Lean within the Lake environment (which sets the search path to include mathlib) to test that mathlib4 is installed:
+echo 'def main : IO Unit := IO.println "Lean works!"' | lake env lean --run --stdin
+## doesn't work idk why echo 'def main : IO Unit := IO.println "Lean works!"' | lean --run --stdin
+# Sample output: Lean works!
+
+
+# Ensure Mathlib4 Matches Lean 4.15.0
+# Clone or go to your mathlib4 or mathlib4_15_0 folder
+cd ~
+
+# Download mathlib4 name it mathlib4_15_0 repository from GitHub
+git clone --branch releases/v4.15.0 https://github.com/leanprover-community/mathlib4.git mathlib4_15_0
+
+# Change directory into the cloned mathlib4_15_0 repository
+cd ~/mathlib4_15_0
+# mv ~/mathlib4_15_0 $DFS/mathlib4_15_0
+# ln -s $DFS/mathlib4_15_0 $HOME/mathlib4_15_0
+
+# Check out the branch for Lean 4.15.0:
+# Fetch all remote references from every configured remote
+git fetch --all
+
+# Switch to the release tag matching PyPantograph
+git checkout releases/v4.15.0
+git brach # check branch
+cat lean-toolchain
+# leanprover/lean4:v4.15.0
+
+# Fetch cache .olean files for the current commit to speed up the build process
+lake exe cache get
+# No files to download
+# Decompressing 5826 file(s)
+# Unpacked in 8795 ms
+# Completed successfully!
+
+# Run the mathlib4 test suite in the mathlib4_15_0 directory to verify everything works correctly
+# Warning: Very slow
+(cd ~/mathlib4_15_0 && lake test)
+# ⣿ [?/?] Computing build job
+cd ~/mathlib4_15_0 && lake build
+# Build completed successfully.
+# real    0m16.570s
+# user    0m6.518s
+# sys     0m12.284s
+
+# TODO: one liner test for mathlib
+#   --> https://github.com/stanford-centaur/PyPantograph/issues/89
+#   --> https://proofassistants.stackexchange.com/questions/4848/quick-one-liner-to-verify-mathlib4-installation-eg-with-lean-4-15-0
+#   --> https://chatgpt.com/c/67da423c-e384-8001-a934-eadf6aca7b11
+# since there is no lean project specified here, this cannot be tested but it would like:
+cd ~/veribench/lean_src_proj
+echo -e 'import Mathlib.Topology.Basic\n#check TopologicalSpace' | lake env lean --stdin
+# Output: TopologicalSpace.{u} (X : Type u) : Type u
+
+# For a pypantograph test go bellow, search Server( in this file
+```
 
 ## 4. Prepare PyPantograph before Pip Installing it
 Note: **you need Lean4, Mathlib4 and PyPantograph/Pantograph to all agree on Lean version** e.g., **4.15.0** at the time of this writing.
-Useful chat: https://chatgpt.com/c/67da423c-e384-8001-a934-eadf6aca7b11 
 
 <!-- ```bash
 # Get the PyPantograph repo submodule if not present already:
@@ -438,32 +515,6 @@ git pull
 # Initializes and updates every level of submodules from their remote sources
 git submodule update --init --recursive --remote
 ```
-
-### 4A. Ensure PyPantograph & Submodule Are Lean 4.15.0
-PyPantograph has a `src/` (`Pantograph`) submodule that also pins a Lean version. 
-Confirm it's `4.15.0`:
-```bash
-# Got to the dir
-cd ~/
-# either cd ~/ZIP-FIT/PyPantograph or cd ~/PyPantograph
-cd PyPantograph
-cat src/lean-toolchain
-# Expect: leanprover/lean4:v4.15.0
-```
-
-If the toolchain version is different, update it:
-```bash
-# Got to the dir 
-cd ~/PyPantograph
-# Fetch and merge the latest changes from the remote
-git pull
-# Initialize and update submodules at their pinned commits
-git submodule update --init --recursive
-# Then re-check src/lean-toolchain to verify that it specifies the correct Lean version
-cat src/lean-toolchain
-# Expect: leanprover/lean4:v4.15.0
-```
-
 ## 5. Install Poetry
 We need Poetry to install PyPantograph because it uses it to build it.
 
@@ -502,7 +553,7 @@ python3 -m venv $VENV_PATH
 $VENV_PATH/bin/pip install -U pip setuptools
 $VENV_PATH/bin/pip install poetry
 
-poetry
+which poetry
 
 # Make it permanent
 cat ~/.bashrc | grep poetry
@@ -518,14 +569,18 @@ If it hijacks your shell's Python, you can open a new shell and re-activate zip_
 1. **Stay** in the [`PyPantograph`](https://github.com/stanford-centaur/PyPantograph)` folder (and in the `zip_fit` env).  
 2. **Configure Poetry & Install PyPantograph** so it doesn't create an extra venv:
 ```bash
-# Change PyPantograph dir
+# Change PyPantograph dir & check lean-toolchain, if wrong git pull & update submodules recursively & remote
+conda activate zip_fit
 cd ~/PyPantograph
+cat src/lean-toolchain
+# Expect: leanprover/lean4:v4.15.0
+
 # Configure Poetry to install packages in the current environment instead of creating a new virtual environment
 poetry config virtualenvs.create false
 
 # Install PyPantograph
 # Check you have somewhere poetry
-which peotry
+which poetry
 # Build the distributable package for PyPantograph using Poetry
 poetry build
 # Install the package in the current environment using Poetry
@@ -538,43 +593,69 @@ poetry show
 pip list | grep pantograph
 
 # Run the PyPantograph server
+pip install pexpect # force install pexpect (sometimes needed)
 python3 -m pantograph.server
 # pip install pexpect # - hack if prev fails maybe this works
+# (zip_fit) brando9@mercury2~ $ python -m pantograph.server
+# <frozen runpy>:128: RuntimeWarning: 'pantograph.server' found in sys.modules after import of package 'pantograph', but prior to execution of 'pantograph.server'; this may result in unpredictable behaviour
+# ...........
+# ----------------------------------------------------------------------
+# Ran 11 tests in 7.224s
+
+# OK
+
+# Basic PyPantograph import
+python -c "from pantograph import Server; server = Server(imports=['Init']); print(server)"
+
+# PyPantograph Import with local Mathlib
+python -c "import os; from pantograph import Server; server = Server(imports=['Mathlib', 'Init'], project_path=os.path.expanduser('~/mathlib_4_15_0_lfs'), timeout=300); print(server)"
+
+# Run basic lean4 test with mathlib4
+python ~/ZIP-FIT/zip_fit/metrics/tests/basic_lean4_tests.py
 ```
 
-## 7. Ensure Mathlib4 Matches Lean 4.15.0
-PyPantograph's submodule is pinned to Lean 4.15.0. 
-If you want to import `Mathlib` inside PyPantograph, 
-your local Mathlib4 **must** be the same Lean version.
+## Citation Information
+Paper: <https://arxiv.org/abs/2410.18194>
+```
+@article{obbad2024zipfit,
+  author = {Elyas Obbad and Iddah Mlauzi and Brando Miranda and Rylan Schaeffer and Kamal Obbad and Suhana Bedi and Sanmi Koyejo},
+  title = {ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment},
+  year = {2024},
+  journal = {arXiv preprint arXiv:2410.18194},
+}
+```
 
-1. **Clone or go to** your `mathlib4` folder:
+## 11. Troubleshooting
+
+If you encounter version mismatches or PyPantograph errors:
+
+1. **Version Mismatch**: Ensure all three components (PyPantograph, Pantograph submodule, mathlib4_15_0) are using Lean v4.15.0
 ```bash
-# Change directory to the home directory
-cd ~
-# Clone the mathlib4 repository from GitHub
-git clone https://github.com/leanprover-community/mathlib4.git
-# Change directory into the cloned mathlib4 repository
-cd mathlib4
+# Check PyPantograph's submodule version
+cd ~/PyPantograph/src && cat lean-toolchain
+# Check mathlib4_15_0 version
+cd ~/mathlib4_15_0 && cat lean-toolchain
 ```
 
-2. **Check out** the branch for Lean 4.15.0:
+<!-- 2. **PyPantograph Import Errors**: If you can't import `pantograph`, reinstall it:
 ```bash
-# Fetch all remote references from every configured remote
-git fetch --all
-# Switch to the release tag matching PyPantograph
-git checkout releases/v4.15.0
-# Display the contents of the lean-toolchain file
-cat lean-toolchain
-# → leanprover/lean4:v4.15.0
-```
+cd ~/PyPantograph
+pip install -e .
+``` -->
 
-3. ** Speed Up** with cache:
+3. **Server Initialization Errors**: If the server fails to start, try rebuilding the components:
 ```bash
-lake exe cache get
+# Rebuild PyPantograph's Lean components
+cd ~/PyPantograph/src
+lake clean
+lake build
+# Rebuild PyPantograph Python package
+cd ~/PyPantograph
+poetry build
+poetry install
 ```
-This fetches pre-built .olean files for that commit if they exist.
 
-4. (*optional*) If needed, do a **local build**:
+## (*Optional*) Clean (TODO needs checking and clarifications)
 ```bash
 # Clean previous build artifacts using lake's built-in clean command
 lake clean
@@ -587,52 +668,7 @@ lake build
 ```
 Now, Mathlib4 is on Lean 4.15.0, matching PyPantograph.
 
-## 8. Final Verification
-
-### 8A. Check Lean Versions
-
-```bash
-poetry show
-# or
-pip list | grep pantograph
-
-lean --version
-# Should say 4.15.0 if you're in a folder overridden by elan or if conda isn't overshadowing anything.
-
-cd ~/mathlib4
-cat lean-toolchain
-# → 4.15.0
-
-cd ~/PyPantograph/src
-cat lean-toolchain
-# → 4.15.0
-
-elan --version
-# elan 3.1.1 (71ddc6633 2024-02-22)
-lean --version
-# Lean (version 4.7.0, x86_64-unknown-linux-gnu, commit 6fce8f7d5cd1, Release)
-lake --version
-# Lake version 5.0.0-6fce8f7 (Lean version 4.7.0)
-
-python -m pantograph.server
-```
-
-All must match for a successful import.
-
-### 8B. Minimal PyPantograph Test
-
-```bash
-cd ~
-python -c "from pantograph import Server;import os; \
-           s = Server(imports=['Mathlib'], project_path=os.path.expanduser('~/mathlib4')); \
-           print('Pantograph server started!')"
-
-python -m pantograph.server
-```
-- If you see **"Pantograph server started!"** and no "invalid header" errors, you're good!
-
-
-## 10. To deinitialize the PyPantograph git submodule
+## To deinitialize the PyPantograph git submodule
 
 ```bash
 cd ~/ZIP-FIT
@@ -654,57 +690,4 @@ rm -f .gitmodules
 
 # 7) Commit the changes so the repository no longer references the submodule
 git commit -am "Completely remove PyPantograph submodule"
-```
-
-## 9. (Optional) Re-check ZIP-FIT
-
-Return to your ZIP-FIT repo:
-
-```bash
-cd ~/ZIP-FIT
-pip install -e .
-
-python -c "import zip_fit; print('zip_fit imported successfully!')"
-```
-ref, o1 pro:https://chatgpt.com/g/g-p-6789a51d52308191917d7bc04225a117-zip-fit/c/67996aa2-4d28-8001-a095-b54f4555676a?model=o1-pro
-
-## Citation Information
-Paper: <https://arxiv.org/abs/2410.18194>
-```
-@article{obbad2024zipfit,
-  author = {Elyas Obbad and Iddah Mlauzi and Brando Miranda and Rylan Schaeffer and Kamal Obbad and Suhana Bedi and Sanmi Koyejo},
-  title = {ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment},
-  year = {2024},
-  journal = {arXiv preprint arXiv:2410.18194},
-}
-```
-
-## 11. Troubleshooting
-
-If you encounter version mismatches or PyPantograph errors:
-
-1. **Version Mismatch**: Ensure all three components (PyPantograph, Pantograph submodule, mathlib4) are using Lean v4.15.0
-```bash
-# Check PyPantograph's submodule version
-cd ~/PyPantograph/src && cat lean-toolchain
-# Check mathlib4 version
-cd ~/mathlib4 && cat lean-toolchain
-```
-
-<!-- 2. **PyPantograph Import Errors**: If you can't import `pantograph`, reinstall it:
-```bash
-cd ~/PyPantograph
-pip install -e .
-``` -->
-
-3. **Server Initialization Errors**: If the server fails to start, try rebuilding the components:
-```bash
-# Rebuild PyPantograph's Lean components
-cd ~/PyPantograph/src
-lake clean
-lake build
-# Rebuild PyPantograph Python package
-cd ~/PyPantograph
-poetry build
-poetry install
 ```

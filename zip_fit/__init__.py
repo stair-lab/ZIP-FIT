@@ -1,6 +1,7 @@
+from typing import List
 from .zipfit import ZIPFIT
 
-def compute_zipfit_alignment(texts_a, texts_b, compression_algorithm='gzip', compress_level=0):
+def compute_zipfit_alignment(texts_a: List[str], texts_b: List[str], compression_algorithm: str = 'lz4', compress_level: int = 0) -> float:
     """
     Compute the average compression-based alignment score between two sets of texts.
     

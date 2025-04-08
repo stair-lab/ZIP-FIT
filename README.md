@@ -220,7 +220,7 @@ cd ~/mathlib4_15_0 && lake build
 #   --> https://github.com/stanford-centaur/PyPantograph/issues/89
 #   --> https://proofassistants.stackexchange.com/questions/4848/quick-one-liner-to-verify-mathlib4-installation-eg-with-lean-4-15-0
 #   --> https://chatgpt.com/c/67da423c-e384-8001-a934-eadf6aca7b11
-# since there is no lean project specified here, this cannot be tested but it woulb like:
+# since there is no lean project specified here, this cannot be tested but it would like:
 cd ~/veribench/lean_src_proj
 echo -e 'import Mathlib.Topology.Basic\n#check TopologicalSpace' | lake env lean --stdin
 # Output: TopologicalSpace.{u} (X : Type u) : Type u

@@ -1,5 +1,3 @@
-# utils.py
-
 import os
 from typing import List
 
