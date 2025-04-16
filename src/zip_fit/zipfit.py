@@ -358,12 +358,12 @@ class ZIPFIT:
         if not texts_a or not texts_b:
             return 0.0
         
-        print(f"Computing compression sizes for {len(texts_a)} and {len(texts_b)} texts...")
+        # print(f"Computing compression sizes for {len(texts_a)} and {len(texts_b)} texts...")
         # Directly compute compression sizes without multiprocessing
         compressed_a = [self.compress(text) for text in texts_a]
         compressed_b = [self.compress(text) for text in texts_b]
         
-        print("Computing alignment scores...")
+        # print("Computing alignment scores...")
         # Calculate similarities directly
         total_alignment = 0.0
         count = 0
@@ -379,7 +379,7 @@ class ZIPFIT:
         # Return the average alignment score
         if count > 0:
             avg_alignment = total_alignment / count
-            print(f"ZIPFIT alignment score: {avg_alignment:.4f}")
+            # print(f"ZIPFIT alignment score: {avg_alignment:.4f}")
             return avg_alignment
         else:
             return 0.0
