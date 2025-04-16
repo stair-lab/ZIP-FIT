@@ -330,6 +330,7 @@ poetry config virtualenvs.create false
 # Check you have somewhere poetry
 which poetry
 # Build the distributable package for PyPantograph using Poetry
+cd ~/PyPantograph
 poetry build
 # Install the package in the current environment using Poetry
 poetry install
