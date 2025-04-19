@@ -33,7 +33,7 @@ def get_list_lean4_syntax_errors(lean_snippet: str, server: Server, debug: bool 
         print(f'\n----{lean_snippet=}----\n') if debug else None
         import traceback
         traceback.print_exc() if debug else None
-        return [f'PyPantograph threw some exception: {traceback.format_exc()}']
+        return [f'The Lean 4 PyPantograph server threw some exception, traceback: {traceback.format_exc()}']
 
     syntax_errors: List[str] = []
     for comp_unit in compilation_units:
