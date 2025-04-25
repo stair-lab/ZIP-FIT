@@ -61,9 +61,9 @@ dev = [
     "mypy>=0.910",
 ]
 
-# choosing src idiom over flat packaging: https://chatgpt.com/share/67f6f53e-3258-8001-a46b-2152ea437ab7
 [tool.setuptools]
-package-dir = {"" = "src"}  # Maps top-level package names to the 'src/' directory (e.g., 'zip_fit' → 'src/zip_fit')
+# Automatically find packages under src/
+package-dir = {"" = "src"} 
 
 [tool.setuptools.packages.find]
 where = ["src"]  # Limit package discovery to the 'src/' directory
