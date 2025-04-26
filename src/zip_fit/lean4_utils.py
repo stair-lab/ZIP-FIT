@@ -1,9 +1,17 @@
-from typing import List
+import os
+from typing import List, Dict
 
 from pantograph.server import Server
 from pantograph.data import CompilationUnit
 
 import re
+
+# Real Server That Talks to Lean 4 from Python
+default_server = Server(
+    imports=["Mathlib", "Init"], 
+    project_path=os.path.expanduser("~/mathlib_4_15_0_lfs"),
+    timeout=60,
+)
 
 def parse_lean_completion(llm_output: str) -> str:
     """
@@ -23,23 +31,42 @@ def parse_lean_completion(llm_output: str) -> str:
     # If a match is found, return the captured text (group 1) after stripping spaces
     return match.group(1).strip() if match else "aslfasfj 134ljdf by := :="
 
-def get_list_lean4_syntax_errors(lean_snippet: str, server: Server, debug: bool = False) -> List[str]:
-    """
-    Return list of syntax errors in lean snippet.
-    """
+# for backwards compatibility
+def get_list_lean4_all_mgs_and_error_mgs(lean_snippet: str, 
+                                         server: Server = default_server, 
+                                         debug: bool = False) -> List[str]:
+    """ Return list of all messages and error messages in lean snippet. """
+    result: dict = get_list_lean4_all_mgs_and_error_mgs(lean_snippet, server, debug)
+    error_msgs: List[str] = result['error_msgs']
+    return error_msgs
+
+def get_list_lean4_all_mgs_and_error_mgs(lean_snippet: str, 
+                                         server: Server = default_server, 
+                                         debug: bool = False
+                                         ) -> Dict[str, List[str]]:
+    """ Return list of all messages and error messages in lean snippet. """
+    all_messages: List[str] = []
+    error_messages: List[str] = []
     try:
         compilation_units: List[CompilationUnit] = server.load_sorry(lean_snippet)
+        for comp_unit in compilation_units:
+            for msg in comp_unit.messages:
+                all_messages.append(msg)
+                # Quick check: if 'error:' is in the message.
+                if "error:" in msg:
+                    error_messages.append(msg)
     except:
         print(f'\n----{lean_snippet=}----\n') if debug else None
         import traceback
-        traceback.print_exc() if debug else None
-        return [f'The Lean 4 PyPantograph server threw some exception, traceback: {traceback.format_exc()}']
+        error_msg: str = (f'The Lean 4 PyPantograph server threw some exception, traceback: {traceback.format_exc()}, '
+                          f'and exception was: {e}, '
+                          f'likely an error more serious and not just a Lean 4 if the Lean 4 server crashed, which it seems it did.')
+        all_messages.append(error_msg)
+        error_messages.append(error_msg)
 
-    syntax_errors: List[str] = []
-    for comp_unit in compilation_units:
-        for msg in comp_unit.messages:
-            # Quick check: if 'error:' is in the message.
-            if "error:" in msg:
-                syntax_errors.append(msg)
-
-    return syntax_errors
+    # - Return all messages and error messages
+    result: dict = {
+        'all_messages': all_messages,
+        'error_messages': error_messages,
+    }
+    return result
