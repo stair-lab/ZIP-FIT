@@ -20,6 +20,9 @@
 		},
 		{
 			"path": "../beyond-scale-2-alignment-coeff"
+		},
+		{
+			"path": "../putnam-axiom"
 		}
 	],
 	"settings": {}

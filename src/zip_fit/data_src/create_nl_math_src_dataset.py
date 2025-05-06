@@ -10,7 +10,7 @@
 # Target settings and datasets
 target_settings = [
     # choosing vars as test since it's unlikely models were trained on it
-    ('Putnam-AXIOM/putnam-axiom-dataset-ICML-2025', 'test', 350), 
+    ('Putnam-AXIOM/putnam-axiom-dataset-ICML-2025-522', 'test', 372), 
 ]
 
 # List of source datasets in the specified order
