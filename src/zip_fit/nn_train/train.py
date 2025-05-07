@@ -14,6 +14,7 @@ from tfa import TfaCallback
 from zip_fit.nn_train.nn_train_utils import tokenize_and_group_texts_via_blocks
 from zip_fit.nn_train.nn_model.model_and_tok import load_model_and_tok
 from zip_fit.nn_train.train_data_src.prepare_train_data import prepare_datasets
+from zip_fit.nn_train.trainer.prepare_trainer import create_trainer
 
 def main_train(config: dict = {}) -> str:
     """
@@ -31,9 +32,7 @@ def main_train(config: dict = {}) -> str:
     today: str = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
     final_model_name: str = config.get('final_model_name', f'{model_name.replace("/", "-")}-{today}')
     
-    # ------------------------------
-    # Prepare datasets using the dedicated module
-    # ------------------------------
+    # - Prepare datasets using the dedicated module
     dataset_type = config.get("dataset_type", "zipfit/math-select-06062025")
     ds_train, ds_eval, ds_tf_eval = prepare_datasets(
         tokenizer=tokenizer,
@@ -41,87 +40,29 @@ def main_train(config: dict = {}) -> str:
         dataset_type=dataset_type
     )
 
-    # ------------------------------
-    # Define training arguments.
-    # ------------------------------
-    # Create the main output directory.
-    output_dir: Path = Path(f'~/data/zipfit_less_runs/tfa_output_{today}').expanduser()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    training_args = TrainingArguments(
-        # max_steps=2, # for debugging
-        output_dir=str(output_dir),  # Main output directory.
-        do_train=True,
-        # num_train_epochs=config.get('num_train_epochs', 3),  # Lean4AI Total training epochs.
-        num_train_epochs=config.get('num_train_epochs', 1),  # Total training epochs.
-        do_eval=True,
-        eval_on_start=config.get('eval_on_start', True),     # Evaluate before training starts.
-        evaluation_strategy=config.get('evaluation_strategy', "steps"),  # Evaluate every few steps.
-        eval_steps=config.get('eval_steps', 1),             # Evaluate after every 25 steps.
-        logging_steps=config.get('logging_steps', 1),       # Log metrics every 25 steps.
-        per_device_train_batch_size=config.get('per_device_train_batch_size', 2),
-        gradient_accumulation_steps=config.get('gradient_accumulation_steps', 4),
-        save_steps=config.get('save_steps', 25),            # Save a checkpoint every 100 steps.
-        save_total_limit=config.get('save_total_limit', 1),    # Keep only the most recent checkpoint.
-        save_strategy=config.get('save_strategy', 'steps'),
-        bf16=torch.cuda.is_bf16_supported(),               # Use bf16 if supported.
-        fp16=not torch.cuda.is_bf16_supported(),            # Otherwise, use fp16.
-        # optim=config.get('optim', 'adamw_torch'),
-        optim=config.get('optim', 'paged_adamw_32bit'),
-        learning_rate=config.get('learning_rate', 1e-6),
-        weight_decay=config.get('weight_decay', 1e-4),
-        gradient_checkpointing=config.get('gradient_checkpointing', True), # careful, this can give issues depedning on hardware
-        lr_scheduler_type=config.get('lr_scheduler_type', 'constant_with_warmup'),
-        warmup_ratio=config.get('warmup_ratio', 0.05),
-        seed=seed,
-        data_seed=config.get('data_seed', seed),
-        # torch_compile=True,
-        # Hub push parameters.
-        # push_to_hub=True,
-        # hub_model_id=final_model_name,
-        # remove_unused_columns=False,
+    # - Create trainer using the dedicated module
+    trainer, output_dir = create_trainer(
+        model=model,
+        tokenizer=tokenizer,
+        train_dataset=ds_train,
+        eval_dataset=ds_eval,
+        tf_eval_dataset=ds_tf_eval,
+        model_name=model_name,
+        config=config,
+        seed=seed
     )
 
-    # ------------------------------
-    # Attach teacher-forced evaluation callback.
-    # ------------------------------
-    tfa_callback = TfaCallback(
-        tfa_dataset=ds_tf_eval,
-        repo=model_name,
-        n_begin=config.get('n_begin', 184),  # Use full eval set at beginning.
-        n_during=config.get('n_during', 4),    # Partial eval during training to save time.
-        n_end=config.get('n_end', 184)         # Use full eval set at end.
-    )
-
-    # ------------------------------
-    # Build the Trainer.
-    # ------------------------------
-    trainer = Trainer(
-       model=model,
-       args=training_args,
-       train_dataset=ds_train,
-       eval_dataset=ds_eval,
-       callbacks=[tfa_callback],
-       tokenizer=tokenizer,  # Ensure tokenizer is saved and pushed.
-    )
-
-    # ------------------------------
-    # Run training.
-    # ------------------------------
+    # - Run training.
     trainer.train()
 
-    # ------------------------------
-    # Save final model and tokenizer in a dedicated subdirectory.
-    # ------------------------------
+    # - Save final model and tokenizer in a dedicated subdirectory.
     final_model_dir: Path = output_dir / final_model_name
     final_model_dir.mkdir(parents=True, exist_ok=True)
     trainer.save_model(str(final_model_dir))          # Saves both model and tokenizer.
     tokenizer.save_pretrained(str(final_model_dir))     # Extra precaution.
 
-    # ------------------------------
-    # Push the final model (and tokenizer) to the Hub.
+    # - Push the final model (and tokenizer) to the Hub.
     # The push will be blocking by default unless 'blocking' is overridden in config.
-    # ------------------------------
     trainer.push_to_hub(commit_message="Final model checkpoint", blocking=config.get('blocking', True))
 
     # Construct the final model URL and print it.

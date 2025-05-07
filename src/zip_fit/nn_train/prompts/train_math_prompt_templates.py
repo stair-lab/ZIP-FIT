@@ -40,13 +40,13 @@ $$-\frac{3}{2}a=b\Rightarrow\frac{a}{b}=\boxed{-\frac{2}{3}}.$$"""
 )
 # keeping above for reference for decision bellow
 # Given MINERVA math prompt is the one used for lm harness and the one used for our eval, then that's the train/SFT/CPT format we will use for training & data selection
-MATH_MINERVA_PROMPT_TEMPLATE_2_BETTER: str = "Problem:\n{$PROBLEM}\n\nSolution:\n{$SOLUTION}\n\n"
-def get_zipfit_math_train_prompt(problem: str, solution: str, debug: bool = False) -> str:
+MATH_SELECT_TRAIN_PROMPT_TEMPLATE: str = "Problem:\n{$PROBLEM}\n\nSolution:\n{$SOLUTION}\n\n"
+def get_zipfit_math_train_prompt(problem: str, solution: str, prompt_template: str = MATH_SELECT_TRAIN_PROMPT_TEMPLATE, debug: bool = False) -> str:
     """
     Note: we replace with $X instead of .format() because if the mathematical text has {} due to latex, 
     it will confuse python's .format() parser.
     """
-    prompt: str = MATH_MINERVA_PROMPT_TEMPLATE_2_BETTER.replace("{$PROBLEM}", problem).replace("{$SOLUTION}", solution)
+    prompt: str = prompt_template.replace("{$PROBLEM}", problem).replace("{$SOLUTION}", solution)
     print(prompt) if debug else None
     return prompt
 
