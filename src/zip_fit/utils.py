@@ -29,8 +29,8 @@ def seed_everything(seed: int = 42):
         hf_set_seed(seed)
     else:
         print("Warning: Transformers is only fully deterministic on GPU")
+    # for vllm seed the object model: https://stackoverflow.com/questions/79467847/how-can-i-ensure-deterministic-text-generation-with-vllm-and-does-it-support-a/79467848#79467848
 
-# TODO: unsure if needed...
 def generate_snippets_hf_pipeline(prompt: str, num_samples: int = 5, max_length: int = 512, model_name: str = 'gpt2') -> List[str]:
     """
     Generates Lean 4 code snippets from a textual prompt using GPT-2 (toy example).
