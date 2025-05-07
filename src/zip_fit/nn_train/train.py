@@ -13,53 +13,29 @@ from zip_fit.utils import seed_everything
 from tfa import TfaCallback
 
 from zip_fit.nn_train.nn_train_utils import tokenize_and_group_texts_via_blocks
+from zip_fit.nn_train.nn_model.model_and_tok import load_model_and_tok
 
 def main_train(config: dict = {}) -> str:
     """
     Trains the model using the provided configuration, saves the final checkpoint (model + tokenizer)
     in a dedicated subdirectory, and pushes the final model to the Hugging Face Hub.
-    
-    Args:
-        config (dict): Configuration dictionary for training parameters.
-        
-    Returns:
-        str: The final model directory path.
     """
-    # - Set device and seed.
+    # - Set device and seed
     seed: int = config.get('seed', 42)
     seed_everything(seed)
 
-    # ------------------------------
-    # Load model and tokenizer.
-    # ------------------------------
-    # model_name: str = config.get('model_name', 'gpt2')
-    model_name: str = config.get('model_name', 'Qwen/Qwen2.5-0.5B')
-    # model_name: str = config.get('model_name', 'google/gemma-2-2b')
-    # model_name: str = config.get('model_name', 'google/internlm2-math-plus-1_8b')
-    model_name: str = config.get('model_name', 'meta-llama/Llama-3.2-1B')
-    model_name: str = config.get('model_name', 'meta-llama/Llama-3.2-3B')
-    # model_name: str = config.get('model_name', 'meta-llama/Meta-Llama-3-8B')
-    # model_name: str = config.get('model_name', 'google/codegemma-2b')
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    torch_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32 
-    model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch_dtype).to(device) if 'gemma-2' not in model_name else AutoModelForCausalLM.from_pretrained(model_name, attn_implementation='eager').to(device)
-    tokenizer: AutoTokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id else tokenizer.eos_token_id
+    # - Load model and tokenizer
+    model_name: str = config.get('model_name', 'meta-llama/Meta-Llama-3-8B-Instruct')
+    model, tokenizer = load_model_and_tok(config)
+
     today: str = config.get('today', datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss'))
-    # Use a custom final model name if provided; otherwise use a default.
-    final_model_name: str = config.get('final_model_name', f'UDACA/{model_name.replace("/", "-")}-pn-v3-lean4-train-on-validation-{today}')
-    # final_model_name: str = config.get('final_model_name', f'UDACA/{model_name.replace("/", "-")}-pn-v3-lean4-train-on-test-{today}')
-    final_model_name: str = config.get('final_model_name', f'AI4M/{model_name.replace("/", "-")}-pn-v3-lean4-train-on-validation-{today}')
+    final_model_name: str = config.get('final_model_name', f'{model_name.replace("/", "-")}-{today}')
     
-    print(f'{model_name=}')
+
+    # ---
 
     block_size: int = config.get('block_size', 1024)
     print(f'{block_size=}')
-
-    print(f'{device=} {torch_dtype=}')
-    print(f'{next(model.parameters()).dtype=}')
-    
-    print()
 
     # ------------------------------
     # Prepare datasets.
