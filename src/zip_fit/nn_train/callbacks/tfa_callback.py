@@ -21,6 +21,7 @@ class TfaCallback(TrainerCallback):
         n_begin: int = -1,
         n_during: int = 2,
         n_end: int = -1,
+        config: Dict[str, Any] = {}
     ):
         """
         Args:
@@ -58,6 +59,7 @@ class TfaCallback(TrainerCallback):
         self.n_begin = n_begin
         self.n_during = n_during
         self.n_end = n_end
+        self.config = config
 
     def on_train_begin(self, args, state: TrainerState, control: TrainerControl, **kwargs):
         if self.n_begin == 0:

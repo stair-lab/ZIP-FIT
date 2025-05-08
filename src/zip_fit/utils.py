@@ -1,5 +1,7 @@
 import os
+from pathlib import Path
 from typing import List
+from transformers import Trainer
 
 def get_current_tmux_session_number() -> str:
     import os
@@ -61,3 +63,13 @@ def login_to_huggingface(config: dict = {}) -> None:
     os.environ['HUGGINGFACE_TOKEN'] = token
     user_info = whoami()
     print(f"Currently logged in as: {user_info['name']}\n")
+
+
+def save_final_model(trainer: Trainer, final_model_name: str, output_dir: Path) -> Path:
+    """ Saves the final model and tokenizer in a dedicated subdirectory. """
+    final_model_dir: Path = output_dir / final_model_name
+    final_model_dir.mkdir(parents=True, exist_ok=True)
+    trainer.save_model(str(final_model_dir))
+    tokenizer = trainer.tokenizer
+    tokenizer.save_pretrained(str(final_model_dir))  
+    return final_model_dir
