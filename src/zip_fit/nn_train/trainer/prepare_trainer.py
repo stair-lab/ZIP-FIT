@@ -12,7 +12,7 @@ import torch
 from transformers import TrainingArguments, Trainer, AutoModelForCausalLM, AutoTokenizer
 from datasets import Dataset
 
-from tfa import TfaCallback
+from zip_fit.metrics.tfa import TfaCallback
 
 def create_training_args(
     config: Dict[str, Any] = {},
@@ -91,9 +91,9 @@ def create_tfa_callback(
     return TfaCallback(
         tfa_dataset=ds_tf_eval,
         repo=model_name,
-        n_begin=config.get('n_begin', 184),  # Use full eval set at beginning.
+        n_begin=config.get('n_begin', -1),  # Use full eval set at beginning.
         n_during=config.get('n_during', 4),  # Partial eval during training to save time.
-        n_end=config.get('n_end', 184)       # Use full eval set at end.
+        n_end=config.get('n_end', -1)       # Use full eval set at end.
     )
 
 def create_trainer(
