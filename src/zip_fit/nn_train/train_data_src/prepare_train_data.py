@@ -4,12 +4,12 @@ This module handles loading, formatting, and tokenizing datasets for training.
 """
 
 import os
-from typing import Dict, List, Tuple, Any, Callable, Optional
+from typing import Dict, Tuple, Any, Optional
 from datasets import load_dataset, Dataset
 from transformers import AutoTokenizer
 
-from zip_fit.nn_train.nn_train_utils import tokenize_and_group_texts_via_blocks
-from zip_fit.nn_train.prompts.train_math_prompt_templates import get_zipfit_math_train_prompt
+from zip_fit.nn_train.trainer.prepare_tokenization import tokenize_and_group_texts_via_blocks
+from zip_fit.nn_train.trainer.prompts.train_math_prompt_templates import get_zipfit_math_train_prompt
 
 # -------------------------------------------------------------------------
 # Prompt formatting functions

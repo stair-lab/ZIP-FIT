@@ -45,3 +45,19 @@ def generate_snippets_hf_pipeline(prompt: str, num_samples: int = 5, max_length:
         temperature=1.0,                  # sampling "temperature", 1.0 => fairly random
     )
     return [o["generated_text"] for o in outputs] 
+
+
+def login_to_huggingface(config: dict = {}) -> None:
+    """
+    Logs in to Hugging Face using the token stored in a file.
+    """
+    from huggingface_hub import login, whoami
+    import os
+    key_file_path: str = os.path.abspath(os.path.expanduser(config.get('key_file_path', "~/keys/master_hf_token.txt")))
+    print(f"Logging in to Hugging Face using token from {key_file_path}")
+    with open(key_file_path, "r", encoding="utf-8") as f:
+        token: str = f.read().strip()
+    login(token=token)
+    os.environ['HUGGINGFACE_TOKEN'] = token
+    user_info = whoami()
+    print(f"Currently logged in as: {user_info['name']}\n")

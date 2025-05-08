@@ -1,7 +1,12 @@
+"""
+Functions for tokenizing and preparing text for training language models.
+This module handles the tokenization and grouping of text into blocks.
+"""
 
 import torch
 from typing import Dict, List, Optional
 from transformers import AutoTokenizer
+from itertools import chain
 
 def tokenize_and_group_texts_via_blocks(
     examples: Dict[str, List[str]],  # since Batched=True gives a list of strings, note: a block size will be 1 sequences, a concat of tokenized rows from the data set! 
@@ -65,7 +70,6 @@ def tokenize_and_group_texts_via_blocks(
             
             **Note:** No `attention_mask` is included in the returned dictionary.
     """
-    from itertools import chain
     # -------------------------------------------------------------------------
     # Step 1: Retrieve Special Token IDs.
     # Retrieve the end-of-sequence (EOS) token ID from the tokenizer.
@@ -114,25 +118,9 @@ def tokenize_and_group_texts_via_blocks(
     # Step 6: Create labels for language modeling tasks.
     # It is common for language models to use the input_ids as labels.
     # Convert the list of token blocks into PyTorch tensors with dtype=torch.long.
-    import torch
     result: Dict[str, torch.Tensor] = {
         "input_ids": torch.tensor(all_token_blocks, dtype=torch.long),
         "labels": torch.tensor(all_token_blocks.copy(), dtype=torch.long),
     }
 
-    return result
-
-def login_to_huggingface(config: dict = {}) -> None:
-    """
-    Logs in to Hugging Face using the token stored in a file.
-    """
-    from huggingface_hub import login, whoami
-    import os
-    key_file_path: str = os.path.abspath(os.path.expanduser(config.get('key_file_path', "~/keys/master_hf_token.txt")))
-    print(f"Logging in to Hugging Face using token from {key_file_path}")
-    with open(key_file_path, "r", encoding="utf-8") as f:
-        token: str = f.read().strip()
-    login(token=token)
-    os.environ['HUGGINGFACE_TOKEN'] = token
-    user_info = whoami()
-    print(f"Currently logged in as: {user_info['name']}\n")
+    return result 
