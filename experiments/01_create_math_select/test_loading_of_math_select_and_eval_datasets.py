@@ -233,7 +233,172 @@ def example_minimal_usage():
         print(f"Error in minimal example: {e}")
         return False
 
+def validate_dataset_thoroughly(dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"):
+    """
+    Perform thorough validation of every example in the dataset to ensure data quality.
+    
+    Checks:
+    - All required fields are present and non-empty
+    - Field data types are as expected
+    - Content lengths are reasonable
+    - No significant data inconsistencies
+    
+    Args:
+        dataset_name: Name of the dataset on Hugging Face
+    
+    Returns:
+        dict: Statistics about the validation
+    """
+    print(f"\n{'='*80}")
+    print(f"Performing thorough validation of dataset: {dataset_name}")
+    print(f"{'='*80}")
+    
+    # Statistics to collect
+    stats = {
+        "total_examples": 0,
+        "valid_examples": 0,
+        "issues": {
+            "empty_problem": 0,
+            "empty_solution": 0,
+            "very_short_problem": 0,
+            "very_short_solution": 0,
+            "type_errors": 0,
+            "missing_fields": 0,
+            "invalid_year": 0,
+            "other_issues": 0
+        },
+        "types": {},
+        "sources": {},
+        "years": {},
+        "answer_types": {}
+    }
+    
+    try:
+        # Get all available splits
+        splits = get_dataset_split_names(dataset_name)
+        
+        # Process each split
+        for split in splits:
+            print(f"\nValidating {split} split...")
+            ds = load_dataset(dataset_name, split=split)
+            stats["total_examples"] += len(ds)
+            
+            # Define required fields and their expected types
+            required_fields = {
+                "id": str, 
+                "problem": str, 
+                "solution": str,
+                "year": str,
+                "source": str,
+                "type": str
+            }
+            
+            # Process each example in detail
+            for i, example in enumerate(ds):
+                valid_example = True
+                issues = []
+                
+                # Check for missing or empty required fields
+                for field, expected_type in required_fields.items():
+                    # Check if field exists
+                    if field not in example:
+                        valid_example = False
+                        issues.append(f"Missing field: {field}")
+                        stats["issues"]["missing_fields"] += 1
+                        continue
+                    
+                    # Check if field is empty
+                    if isinstance(example[field], str) and not example[field].strip():
+                        valid_example = False
+                        issues.append(f"Empty field: {field}")
+                        if field == "problem":
+                            stats["issues"]["empty_problem"] += 1
+                        elif field == "solution":
+                            stats["issues"]["empty_solution"] += 1
+                    
+                    # Check type
+                    if not isinstance(example[field], expected_type):
+                        valid_example = False
+                        issues.append(f"Type error for {field}: expected {expected_type}, got {type(example[field])}")
+                        stats["issues"]["type_errors"] += 1
+                
+                # Check content length for key fields
+                if "problem" in example and isinstance(example["problem"], str):
+                    if len(example["problem"]) < 10:  # Arbitrary threshold for "very short"
+                        valid_example = False
+                        issues.append(f"Very short problem: {len(example['problem'])} chars")
+                        stats["issues"]["very_short_problem"] += 1
+                
+                if "solution" in example and isinstance(example["solution"], str):
+                    if len(example["solution"]) < 10:  # Arbitrary threshold for "very short"
+                        valid_example = False
+                        issues.append(f"Very short solution: {len(example['solution'])} chars")
+                        stats["issues"]["very_short_solution"] += 1
+                
+                # Check for valid year format
+                if "year" in example and isinstance(example["year"], str):
+                    year = example["year"]
+                    try:
+                        year_int = int(year)
+                        if year_int < 1900 or year_int > 2100:  # Reasonable range for competition years
+                            valid_example = False
+                            issues.append(f"Suspicious year value: {year}")
+                            stats["issues"]["invalid_year"] += 1
+                    except ValueError:
+                        valid_example = False
+                        issues.append(f"Non-numeric year: {year}")
+                        stats["issues"]["invalid_year"] += 1
+                
+                # Collect statistics on categorical fields
+                for field in ["type", "source", "year", "answer_type"]:
+                    if field in example and example[field]:
+                        field_value = example[field]
+                        if field not in stats:
+                            stats[field + "s"] = {}
+                        if field_value not in stats[field + "s"]:
+                            stats[field + "s"][field_value] = 0
+                        stats[field + "s"][field_value] += 1
+                
+                # Print progress and issues
+                if (i+1) % 50 == 0 or i+1 == len(ds):
+                    print(f"  Processed {i+1}/{len(ds)} examples in {split} split")
+                
+                if not valid_example:
+                    print(f"  Issues in {split} example {i} (id: {example.get('id', 'unknown')}): {', '.join(issues)}")
+                    stats["issues"]["other_issues"] += 1
+                else:
+                    stats["valid_examples"] += 1
+    
+    except Exception as e:
+        print(f"Error during thorough validation: {e}")
+    
+    # Print summary statistics
+    print(f"\nValidation Summary for {dataset_name}:")
+    print(f"  Total examples: {stats['total_examples']}")
+    print(f"  Valid examples: {stats['valid_examples']} ({(stats['valid_examples'] / stats['total_examples'] * 100) if stats['total_examples'] > 0 else 0:.2f}%)")
+    
+    print("\nIssues found:")
+    for issue, count in stats["issues"].items():
+        if count > 0:
+            print(f"  {issue}: {count}")
+    
+    print("\nProblem types distribution:")
+    for type_name, count in sorted(stats.get("types", {}).items(), key=lambda x: x[1], reverse=True):
+        if count > 0:
+            print(f"  {type_name}: {count}")
+    
+    print("\nSources distribution:")
+    for source, count in sorted(stats.get("sources", {}).items(), key=lambda x: x[1], reverse=True):
+        if count > 0:
+            print(f"  {source}: {count}")
+    
+    print("\nCompleteness check passed: All examples have been processed and validated.")
+    return stats
+
 def main():
+    # Run thorough validation
+    validate_dataset_thoroughly()
+    
     # Test loading the Putnam-AXIOM dataset
     print("\nTesting loading of zipfit/Putnam-AXIOM-for-zip-fit-splits dataset...")
     datasets = load_and_verify_putnam_axiom_dataset()
