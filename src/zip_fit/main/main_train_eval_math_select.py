@@ -3,6 +3,7 @@ import time
 
 import wandb
 
+from zip_fit.metrics.log_likelihoods_gold_ref import compute_log_likelihood_for_dataset
 from zip_fit.nn_train.train import train
 from zip_fit.utils import login_to_huggingface, seed_everything
 
@@ -14,16 +15,16 @@ def main_train_eval(config: dict = {}):
     # - Login to Hugging Face
     login_to_huggingface(config)
 
-    # Prepare Eval dataset
-    ds_eval, ds_tf_eval = prepare_math_eval_datasets(tokenizer, config, dataset_name)
+    # # - Evaluate math_acc before training
+    # ds_eval, ds_tf_eval = prepare_math_eval_datasets(tokenizer, config, dataset_name)
+    # math_acc_before_train: float = math_acc_before_train(config)
+    # print(f'Result before training: {math_acc_before_train=}\n Time: {time.time() - start_time}')
+    # wandb.log('math_acc_before_train', math_acc_before_train)
 
-    # - Evaluate math_acc before training
-    math_acc_before_train: float = math_acc_before_train(config)
-    print(f'Result before training: {math_acc_before_train=}\n Time: {time.time() - start_time}')
-    wandb.log('math_acc_before_train', math_acc_before_train)
-
-    # - Evaluate log likelihood gold ref before training 
-    compute_log_likelihood_for_subds()
+    # - Evaluate tf metrics before training
+    # Note: tfa is a callback in the trainer, so we are skipping it here
+    ds_tf_eval = get_eval_tf_datasets(tokenizer, split=config.get("training_tf_eval_split", "validation"), config=config)
+    compute_log_likelihood_for_dataset()
 
     # - Train
     results: dict = train(config)

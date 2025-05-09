@@ -1,5 +1,6 @@
 def format_gsm8k_prompt(question: str, answer: str, final_answer: str) -> str:
     """ Format a prompt for GSM8K math problems. """
+    # TODO double check if it's capitalized, and one new line or two.
     return f'question: {question}\nanswer: {answer}\n### {final_answer}'
 
 # Given MINERVA math prompt an eval bellow is the train & data setect format.

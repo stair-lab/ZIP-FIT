@@ -40,6 +40,9 @@ export training_tf_eval_split="test"
 
 export final_model_name="zipfit/math-select-mdl-${model_name#*/}-ds-${training_dataset_name#*/}"
 
+export mode="dryrun"
+# export mode="online"
+
 # - Run
 export CUDA_VISIBLE_DEVICES=0
 python -m zip_fit.nn_train.train \

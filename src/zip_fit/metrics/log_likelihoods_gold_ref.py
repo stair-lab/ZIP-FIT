@@ -5,7 +5,7 @@ import torch
 from typing import Dict, List, Union
 from vllm import LLM, SamplingParams
 import gc
-
+from datasets import Dataset
 
 def set_performance_env_vars(n_threads: int = 4):
     """Set environment variables according to Rok asked us to include the following specifications in our code to prevent CPUs from spinning idly:"""
@@ -111,8 +111,8 @@ def compute_log_likelihood(
         torch.cuda.empty_cache()
 
 
-def compute_log_likelihood_for_subds(
-    sub_ds,
+def compute_log_likelihood_for_dataset(
+    sub_ds: Dataset,
     model_path: str,
     dtype: str = "bfloat16",
     debug: bool = False,
