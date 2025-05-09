@@ -10,8 +10,6 @@ export model_name="openai-community/gpt2"
 # export model_name="meta-llama/Meta-Llama-3-8B-Instruct"
 # export model_name="google/codegemma-2b"
 
-export final_model_name="zipfit/model" # TODO
-
 # - Training parameters - optimized to prevent OOM issues
 export num_train_epochs=1
 export do_eval=True
@@ -36,7 +34,16 @@ export warmup_ratio=0.05
 export training_dataset_name="zipfit/math-select-06062025"
 export training_split="train"
 export training_eval_dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"
-export training_eval_split="validation"
+export training_eval_split="test"
+export training_tf_eval_dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"
+export training_tf_eval_split="test"
+
+export eval_dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"
+export eval_split="test"
+export eval_tf_dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"
+export eval_tf_split="test"
+
+export final_model_name="zipfit/math-select-mdl-${model_name#*/}-ds-${training_dataset_name#*/}"
 
 # - Run
 export CUDA_VISIBLE_DEVICES=0
