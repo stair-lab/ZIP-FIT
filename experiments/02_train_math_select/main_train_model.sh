@@ -38,11 +38,6 @@ export training_eval_split="test"
 export training_tf_eval_dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"
 export training_tf_eval_split="test"
 
-export eval_dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"
-export eval_split="test"
-export eval_tf_dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"
-export eval_tf_split="test"
-
 export final_model_name="zipfit/math-select-mdl-${model_name#*/}-ds-${training_dataset_name#*/}"
 
 # - Run

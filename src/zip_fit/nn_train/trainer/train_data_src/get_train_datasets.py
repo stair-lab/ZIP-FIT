@@ -4,13 +4,13 @@ from typing import Optional
 from zip_fit.nn_train.trainer.prompts.train_math_prompt_templates import format_gsm8k_prompt
 from zip_fit.nn_train.trainer.train_data_src.prepare_train_tokenization import tokenize_and_group_texts_via_blocks
 
-def get_train_datasets(tokenizer, config: dict = {}) -> Dataset:
+def get_train_datasets(tokenizer, split: Optional[str] = None, config: dict = {}) -> Dataset:
     """ Get the training dataset. """
     training_dataset_name = config.get("training_dataset_name", "zipfit/math-select-06062025")
-    training_split = config.get("training_split", "train")
     block_size: int = config.get('block_size', 1024)
     max_samples: Optional[int] = config.get('max_train_samples', None)
-    split_str = f'{training_split}[:{max_samples}]' if max_samples else training_split
+    training_split: str = config.get("training_split", "train") if split is None else split # might override split if you want the data in the train format for evaluating CE during training.
+    split_str: str = f'{training_split}[:{max_samples}]' if max_samples else training_split
     
     # Load datasets based on name
     if training_dataset_name.startswith("zipfit/math-select"):

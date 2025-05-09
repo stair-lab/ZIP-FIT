@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 from zip_fit.eval.eval_data_src.eval_tf_math_data import prepare_math_eval_datasets
+from zip_fit.eval.eval_data_src.get_eval_tf_datasets import get_eval_tf_datasets
 from zip_fit.nn_train.trainer.train_data_src.get_train_datasets import get_train_datasets
 from zip_fit.utils import seed_everything, save_final_model
 
@@ -23,9 +24,10 @@ def train(config: dict = {}) -> str:
     model, tokenizer = load_model_and_tok(config) 
     
     # - Prepare datasets using the appropriate specialized module
-    ds_train, ds_eval, ds_tf_eval = get_train_datasets(tokenizer, config)
-    ds_train, ds_eval, ds_tf_eval = get_train_datasets(tokenizer, config)
-    ds_train, ds_eval, ds_tf_eval = get_train_datasets(tokenizer, config)
+    ds_train = get_train_datasets(tokenizer, split=config.get("training_split", "train"), config=config)
+    ds_eval = get_train_datasets(tokenizer, split=config.get("training_eval_split", "train"), config=config)
+    # ds_tf_eval = get_eval_tf_datasets(tokenizer, config)
+    ds_tf_eval = None
     
     # - Create trainer using the dedicated module
     trainer, output_dir = create_trainer(
