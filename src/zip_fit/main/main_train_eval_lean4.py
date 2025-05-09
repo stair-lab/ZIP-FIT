@@ -7,7 +7,6 @@ from pantograph import Server
 
 from zip_fit.metrics.lean4_comp_pass_at_k import lean4_comp_pass_at_k_unbiased
 from zip_fit.nn_train.train import train
-from zip_fit.nn_train.trainer.train_data_src.prepare_train_data import prepare_datasets
 from zip_fit.eval.eval_data_src.eval_lean4_prepare_data import prepare_eval_data
 from zip_fit.utils import login_to_huggingface, seed_everything
 

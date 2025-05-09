@@ -14,10 +14,16 @@ def main_train_eval(config: dict = {}):
     # - Login to Hugging Face
     login_to_huggingface(config)
 
+    # Prepare Eval dataset
+    ds_eval, ds_tf_eval = prepare_math_eval_datasets(tokenizer, config, dataset_name)
+
     # - Evaluate math_acc before training
     math_acc_before_train: float = math_acc_before_train(config)
     print(f'Result before training: {math_acc_before_train=}\n Time: {time.time() - start_time}')
     wandb.log('math_acc_before_train', math_acc_before_train)
+
+    # - Evaluate log likelihood gold ref before training 
+    compute_log_likelihood_for_subds()
 
     # - Train
     results: dict = train(config)

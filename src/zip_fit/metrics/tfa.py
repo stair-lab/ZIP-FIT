@@ -5,7 +5,7 @@ def tfa_teacher_forced_accuracy(
     prompt: str,
     gold_response: str,
     model: PreTrainedModel,
-    repo: str,
+    repo: str, # HF repo name needed to load the correct tokenizer
     device: str = "cuda"
 ) -> float:
     """
@@ -72,7 +72,7 @@ def tfa_teacher_forced_accuracy(
 def compute_tfa_for_subds(
     sub_ds,
     model: PreTrainedModel,
-    repo: str,
+    repo: str, # HF repo name needed to load the correct tokenizer
     device: str = "cuda",
     debug: bool = False,
 ) -> float:

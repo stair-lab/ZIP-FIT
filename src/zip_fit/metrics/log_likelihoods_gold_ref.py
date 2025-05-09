@@ -1,234 +1,156 @@
+from codeop import Compile
 import os
-
-# Rok asked us to include the following specifications in our code to prevent CPUs from spinning idly:
-n_threads_str = "4"
-os.environ["OMP_NUM_THREADS"] = n_threads_str
-os.environ["OPENBLAS_NUM_THREADS"] = n_threads_str
-os.environ["MKL_NUM_THREADS"] = n_threads_str
-os.environ["VECLIB_MAXIMUM_THREADS"] = n_threads_str
-os.environ["NUMEXPR_NUM_THREADS"] = n_threads_str
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["TOKENIZERS_PARALLELISM"] = "True"
-
-# This is needed for deterministic to work.
-os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
-
-import argparse
-import gc
 import numpy as np
-import pandas as pd
-import pathlib
-import time
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from typing import Any, Dict, List, Optional, Tuple, Union
-from vllm import LLM, SamplingParams, RequestOutput
-from vllm.distributed.parallel_state import destroy_model_parallel
-
-import src.data
+from typing import Dict, List, Union
+from vllm import LLM, SamplingParams
+import gc
 
 
-def compute_answer_log_likelihoods_from_model(
-    model_nickname: str = "Pythia_160M_300B",
-    dataset: str = "math",
-    num_prompts_to_use: int = 100,
-):
-    model_outputs_dir = os.path.join(
-        "eval_results",
-        dataset,
-        model_nickname,
+def set_performance_env_vars(n_threads: int = 4):
+    """Set environment variables according to Rok asked us to include the following specifications in our code to prevent CPUs from spinning idly:"""
+    n_threads_str = str(n_threads)
+    os.environ["OMP_NUM_THREADS"] = n_threads_str
+    os.environ["OPENBLAS_NUM_THREADS"] = n_threads_str
+    os.environ["MKL_NUM_THREADS"] = n_threads_str
+    os.environ["VECLIB_MAXIMUM_THREADS"] = n_threads_str
+    os.environ["NUMEXPR_NUM_THREADS"] = n_threads_str
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["TOKENIZERS_PARALLELISM"] = "True"
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # For deterministic operations
+
+
+def compute_log_likelihood(
+    model_path: str,
+    prompt: str,
+    gold_reference: str,
+    dtype: str = "bfloat16",
+    set_rok_performance_env_vars: bool = False, 
+) -> Dict[str, Union[float, List[float]]]:
+    """
+    Compile log likelihood of a gold reference given a prompt using vLLM.
+    
+    Args:
+        model_path: HuggingFace path or local path to the model
+        prompt: The input prompt text
+        gold_reference: The gold reference text to compute likelihood for
+        dtype: Model precision ("bfloat16", "float16", etc.)
+        
+    Returns:
+        Dictionary with token-level and sequence-level log probabilities
+    """
+    # Set performance environment variables
+    if set_rok_performance_env_vars:
+        set_performance_env_vars()
+    
+    # Load model with vLLM
+    model = LLM(model=model_path, dtype=dtype)
+    print(f"Loaded model from {model_path}")
+    
+    # Prepare full text (prompt + gold reference)
+    prompt_and_reference = prompt + gold_reference
+    
+    # Configure sampling parameters for log probability computation
+    sampling_params = SamplingParams(
+        n=1,                # Number of generated sequences per prompt (just 1 completion needed)
+        temperature=1.0,    # Controls randomness: 1.0 means standard sampling without scaling
+        max_tokens=1,       # Only generate 1 new token - minimum required by vLLM for logprobs
+        logprobs=True,      # Enables calculation of log probabilities for generated tokens
+        prompt_logprobs=1,  # Calculate log probabilities for prompt tokens as well
+        seed=0,             # Random seed for reproducibility of generation
     )
-    os.makedirs(model_outputs_dir, exist_ok=True)
-
-    data: Dict[str, List[str]] = src.data.create_prompts_and_answers(
-        dataset=dataset,
-        num_prompts_to_use=num_prompts_to_use,
-    )
-    compute_answer_log_likelihoods_from_model_and_write_to_disk(
-        dataset=dataset,
-        data=data,
-        model_nickname=model_nickname,
-        model_sampled_outputs_dir=model_outputs_dir,
-    )
-
-
-def compute_answer_log_likelihoods_from_model_and_write_to_disk(
-    dataset: str,
-    model_sampled_outputs_dir: str,
-    data: Dict[str, Union[List[str], List[int]]],
-    model_nickname: str,
-):
-    # Load the model_name_or_path and revision
-    models_df = pd.read_csv("metadata/models.csv")
-    model_row = models_df[models_df["Model Nickname"] == model_nickname].iloc[0]
-    model_name_or_path = model_row["HuggingFace Path"]
-    revision = model_row["HuggingFace Revision"]
-    kwargs = {
-        "model": model_name_or_path,
-        "dtype": "bfloat16",
-    }
-    if ~pd.isna(revision):
-        kwargs["revision"] = revision
-
-    # Create output filepath
-    model_outputs_filepath = (
-        pathlib.Path(model_sampled_outputs_dir) / "log_likelihoods.parquet"
-    )
-
-    problems_indices: List[int] = data["problems_indices"]
-    prompts: List[str] = data["prompts"]
-    levels = data["levels"]
-    problem_types = data["problem_types"]
-    solutions = data["solutions"]
-    prompts_and_solutions = data["prompts_and_solutions"]
-
-    # Skip if file exists and is not empty
-    if model_outputs_filepath.exists() and model_outputs_filepath.stat().st_size > 0:
-        results_df = pd.read_parquet(model_outputs_filepath)
-        unique_existing_problem_indices = set(results_df["prompt_idx"].unique())
-        unique_target_problem_indices = set(problems_indices)
-        if unique_target_problem_indices == unique_existing_problem_indices:
-            print(
-                f"File {model_outputs_filepath} already exists. Skipping computation."
-            )
-            return
-
-    # Load the model
-    model = LLM(**kwargs)
-    print(f"Loaded model {model_name_or_path} and optional revision {revision}.")
-
-    # Configure sampling parameters for log probability computation.
-    # Setting temperature=0 for deterministic logprobs, but requesting 1 token as required
-    model_sampling_params = SamplingParams(
-        n=1,
-        temperature=1.0,
-        max_tokens=1,  # vLLM requires at least 1 token
-        logprobs=True,
-        prompt_logprobs=1,
-        seed=0,
-    )
-
-    # Initialize list to store results
-    results_list = []
-
-    for prompt_idx, prompt, solution, prompt_and_solution in zip(
-        problems_indices,
-        prompts,
-        solutions,
-        prompts_and_solutions,
-    ):
-        # Compute log probabilities for both the prompt-only and prompt+solution
-        prompt_outputs: List[RequestOutput] = model.generate(
-            prompts=[prompt], sampling_params=model_sampling_params
+    
+    try:
+        # Get log probabilities for prompt only
+        prompt_outputs = model.generate(
+            prompts=[prompt], sampling_params=sampling_params
         )
-        prompt_and_solution_outputs: List[RequestOutput] = model.generate(
-            prompts=[prompt_and_solution], sampling_params=model_sampling_params
+        
+        # Get log probabilities for prompt + (gold) reference/answer
+        full_outputs = model.generate(
+            prompts=[prompt_and_reference], sampling_params=sampling_params
         )
-
-        # Exclude the first (unconditioned) token and the last unnecessarily generated token.
+        
+        # Extract token IDs and logprobs
         prompt_token_ids = prompt_outputs[0].prompt_token_ids[1:-1]
-        prompt_logprobs = np.array(
-            [
-                prompt_outputs[0].prompt_logprobs[token_idx][token_id].logprob
-                # Start counting from 1 because 0 corresponds to the <START> token.
-                for token_idx, token_id in enumerate(prompt_token_ids, 1)
-            ]
-        )
-        prompt_and_solution_token_ids = prompt_and_solution_outputs[0].prompt_token_ids[
-            1:-1
-        ]
-        prompt_and_solution_logprobs = np.array(
-            [
-                prompt_and_solution_outputs[0]
-                .prompt_logprobs[token_idx][token_id]
-                .logprob
-                # Start counting from 1 because 0 corresponds to the <START> token.
-                for token_idx, token_id in enumerate(prompt_and_solution_token_ids, 1)
-            ]
-        )
-        # # Sanity check: assert that the leading log probabilities are all the same.
-        # # TODO: Debug why vLLM doesn't return consistent log probs for the prefix string.
-        # assert np.all(
-        #     np.isclose(
-        #         prompt_logprobs, prompt_and_solution_logprobs[: len(prompt_logprobs)]
-        #     )
-        # )
-
-        solution_logprobs = prompt_and_solution_logprobs[len(prompt_logprobs) :]
-        token_indices_excluding_prompt = 1 + np.arange(len(solution_logprobs))
-        token_indices_including_prompt = (
-            len(prompt_token_ids) + token_indices_excluding_prompt
-        )
-
-        model_nickname_list = [model_nickname] * len(solution_logprobs)
-        prompt_idx_list = [prompt_idx] * len(solution_logprobs)
-
-        # Append result to list
-        results_list.append(
-            pd.DataFrame.from_dict(
-                {
-                    "Model Nickname": model_nickname_list,
-                    "prompt_idx": prompt_idx_list,
-                    "solution_logprobs": solution_logprobs.tolist(),
-                    "token_idx_excluding_prompt": token_indices_excluding_prompt.tolist(),
-                    "token_idx_including_prompt": token_indices_including_prompt.tolist(),
-                }
-            )
-        )
-
-        # Print progress
-        print(f"Processed prompt {prompt_idx}")
-
-        # Clean up memory
-        del prompt_outputs, prompt_and_solution_outputs
+        full_token_ids = full_outputs[0].prompt_token_ids[1:-1]
+        
+        # Calculate token-level log probabilities
+        prompt_logprobs = np.array([
+            prompt_outputs[0].prompt_logprobs[token_idx][token_id].logprob
+            for token_idx, token_id in enumerate(prompt_token_ids, 1)
+        ])
+        
+        full_logprobs = np.array([
+            full_outputs[0].prompt_logprobs[token_idx][token_id].logprob
+            for token_idx, token_id in enumerate(full_token_ids, 1)
+        ])
+        
+        # Extract logprobs for just the (gold) reference/answer portion
+        reference_logprobs = full_logprobs[len(prompt_logprobs):]
+        
+        # Calculate overall sequence log probability
+        sequence_logprob = float(np.sum(reference_logprobs))
+        
+        return {
+            "token_logprobs": reference_logprobs.tolist(),
+            "sequence_logprob": sequence_logprob,
+            "per_token_avg_logprob": float(np.mean(reference_logprobs))  # this is what we want -- it's log likelihood of gold reference given prompt.
+        }
+        
+    finally:
+        # Clean up resources
+        try:
+            from vllm.distributed.parallel_state import destroy_model_parallel
+            destroy_model_parallel()
+            del model.llm_engine.model_executor.driver_worker
+        except:
+            pass
+        del model
         gc.collect()
-
-    # Create and save single DataFrame with all results
-    results_df = pd.concat(results_list).reset_index(drop=True)
-    model_outputs_filepath.parent.mkdir(parents=True, exist_ok=True)
-    results_df.to_parquet(model_outputs_filepath, index=False)
-    print(f"Saved all log likelihoods to {model_outputs_filepath}")
-
-    # Clean up model resources
-    destroy_model_parallel()
-    del model.llm_engine.model_executor.driver_worker
-    del model
-    gc.collect()
-    torch.cuda.empty_cache()
-    time.sleep(7)
-    print("Finished cleaning up.")
+        torch.cuda.empty_cache()
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Generate outputs from a language model."
-    )
-    parser.add_argument(
-        "--model_nickname",
-        type=str,
-        required=True,
-        help="Path or name of the model to use",
-    )
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        # default="gsm8k",
-        # default="humaneval",
-        default="math",
-        help="Dataset to use",
-    )
-    parser.add_argument(
-        "--num_prompts_to_use", type=int, default=96, help="Number of prompts to use"
-    )
-    args = parser.parse_args()
+def compute_log_likelihood_for_subds(
+    sub_ds,
+    model_path: str,
+    dtype: str = "bfloat16",
+    debug: bool = False,
+) -> float:
+    """
+    Process an entire subset of data (sub_ds) and compute the average log likelihood of gold references across all examples.
 
-    if "CUDA_VISIBLE_DEVICES" not in os.environ:
-        os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(
-            [str(i) for i in range(torch.cuda.device_count())]
+    Parameters:
+      sub_ds: The subset of the dataset (like a HuggingFace 'Dataset' slice) with 'prompt' and 'gold_response' fields.
+      model_path: Path to the model on HuggingFace or local path.
+      dtype: Model precision ("bfloat16", "float16", etc.)
+      debug: Whether to print debug information.
+
+    Returns:
+      float: The average per-token log probability across all examples.
+    """
+    sum_logprob = 0.0
+    count = 0
+
+    for i, example in enumerate(sub_ds):
+        prompt = example["prompt"]
+        gold_response = example["gold_response"]
+
+        # Use the existing compute_log_likelihood function
+        result: Dict = compute_log_likelihood(
+            model_path=model_path,
+            prompt=prompt,
+            gold_reference=gold_response,
+            dtype=dtype
         )
-    compute_answer_log_likelihoods_from_model(
-        model_nickname=args.model_nickname,
-        dataset=args.dataset,
-        num_prompts_to_use=args.num_prompts_to_use,
-    )
-    print("Finished compute_answer_log_likelihoods.py!")
+        
+        # Get the average log probability per token
+        per_token_avg_logprob = result["per_token_avg_logprob"]
+        
+        sum_logprob += per_token_avg_logprob
+        count += 1
+
+        if debug:
+            print(f" Example {i}: Avg LogProb = {per_token_avg_logprob:.4f}")
+
+    return sum_logprob / count if count > 0 else 0.0

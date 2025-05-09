@@ -1,47 +1,49 @@
 """
-ref: https://github.com/brando90/ultimate-utils/blob/master/py_src/uutils/evals/prompts_evals.py
+Follow reference
+    https://github.com/brando90/ultimate-utils/blob/master/py_src/uutils/evals/prompts_evals.py
+is where the prompts I used previously for the putnam evals with my manual eval code. 
 """
-from typing import Union
 
 # -- Prompt Minerva MATH better, but original at https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/tasks/minerva_math/utils.py#L22
 MATH_MINERVA_PROMPT_TEMPLATE_2_BETTER = ("""Problem:
-Find the domain of the expression  $\frac{\sqrt{x-2}}{\sqrt{5-x}}$.}
+Find the domain of the expression  $\\frac{\\sqrt{x-2}}{\\sqrt{5-x}}$.}
 
 Solution:
-The expressions inside each square root must be non-negative. Therefore, $x-2 \ge 0$, so $x\ge2$, and $5 - x \ge 0$, so $x \le 5$. Also, the denominator cannot be equal to zero, so $5-x>0$, which gives $x<5$. Therefore, the domain of the expression is $\boxed{[2,5)}$.
+The expressions inside each square root must be non-negative. Therefore, $x-2 \\ge 0$, so $x\\ge2$, and $5 - x \\ge 0$, so $x \\le 5$. Also, the denominator cannot be equal to zero, so $5-x>0$, which gives $x<5$. Therefore, the domain of the expression is $\\boxed{[2,5)}$.
 
 Problem:
-If $\det \mathbf{A} = 2$ and $\det \mathbf{B} = 12,$ then find $\det (\mathbf{A} \mathbf{B}).$
+If $\\det \\mathbf{A} = 2$ and $\\det \\mathbf{B} = 12,$ then find $\\det (\\mathbf{A} \\mathbf{B}).$
 
 Solution:
-We have that $\det (\mathbf{A} \mathbf{B}) = (\det \mathbf{A})(\det \mathbf{B}) = (2)(12) = \boxed{24}.$
+We have that $\\det (\\mathbf{A} \\mathbf{B}) = (\\det \\mathbf{A})(\\det \\mathbf{B}) = (2)(12) = \\boxed{24}.$
 
 Problem:
 Terrell usually lifts two 20-pound weights 12 times. If he uses two 15-pound weights instead, how many times must Terrell lift them in order to lift the same total weight?
 
 Solution:
-If Terrell lifts two 20-pound weights 12 times, he lifts a total of $2\cdot 12\cdot20=480$ pounds of weight.  If he lifts two 15-pound weights instead for $n$ times, he will lift a total of $2\cdot15\cdot n=30n$ pounds of weight.  Equating this to 480 pounds, we can solve for $n$:
-\begin{align*}
-30n&=480\\
-\Rightarrow\qquad n&=480/30=\boxed{16}
-\end{align*}
+If Terrell lifts two 20-pound weights 12 times, he lifts a total of $2\\cdot 12\\cdot20=480$ pounds of weight.  If he lifts two 15-pound weights instead for $n$ times, he will lift a total of $2\\cdot15\\cdot n=30n$ pounds of weight.  Equating this to 480 pounds, we can solve for $n$:
+\\begin{align*}
+30n&=480\\\\
+\\Rightarrow\\qquad n&=480/30=\\boxed{16}
+\\end{align*}
 
 Problem:
 If the system of equations
 
-\begin{align*}
-6x-4y&=a,\\
+\\begin{align*}
+6x-4y&=a,\\\\
 6y-9x &=b.
-\end{align*}has a solution $(x, y)$ where $x$ and $y$ are both nonzero,
-find $\frac{a}{b},$ assuming $b$ is nonzero.
+\\end{align*}has a solution $(x, y)$ where $x$ and $y$ are both nonzero,
+find $\\frac{a}{b},$ assuming $b$ is nonzero.
 
 Solution:
-If we multiply the first equation by $-\frac{3}{2}$, we obtain
+If we multiply the first equation by $-\\frac{3}{2}$, we obtain
 
-$$6y-9x=-\frac{3}{2}a.$$Since we also know that $6y-9x=b$, we have
+$$6y-9x=-\\frac{3}{2}a.$$Since we also know that $6y-9x=b$, we have
 
-$$-\frac{3}{2}a=b\Rightarrow\frac{a}{b}=\boxed{-\frac{2}{3}}.$$"""
+$$-\\frac{3}{2}a=b\\Rightarrow\\frac{a}{b}=\\boxed{-\\frac{2}{3}}.$$"""
 )
+print(MATH_MINERVA_PROMPT_TEMPLATE_2_BETTER)
 
 STOP_TOKENS: list[str] = ["Solution:", "Problem:", "Question:", "USER:", "USER:", "USER", "ASSISTANT:", "ASSISTANT", "Instruction:", "Instruction", "Response:", "Response"]
 # STOP_TOKENS: list[str] = ["Question:", "Question", "USER:", "USER", "ASSISTANT:", "ASSISTANT", "Instruction:", "Instruction", "Response:", "Response", "Problem:", "Solution:"]
@@ -74,30 +76,30 @@ Solution: Let's think step by step.""")
 MATH_PROMPT_OFFICIAL_TEMPLATE: str = (
 """Given a mathematics problem, determine the answer. Simplify your answer as much as possible.
 ###
-Problem: What is $\left(\frac{7}{8}\right)^3 \cdot \left(\frac{7}{8}\right)^{-3}$?
+Problem: What is $\\left(\\frac{7}{8}\\right)^3 \\cdot \\left(\\frac{7}{8}\\right)^{-3}$?
 Answer: $1$
 ###
 Problem: In how many ways can 4 books be selected from a shelf of 6 books if the order in which the books are selected does not matter?
 Answer: $15$
 ###
 Problem: Find the distance between the points $(2,1,-4)$ and $(5,8,-3).$
-Answer: $\sqrt{59}$
+Answer: $\\sqrt{59}$
 ###
 Problem: The faces of an octahedral die are labeled with digits $1$ through $8$. What is the probability, expressed as a common fraction, of rolling a sum of $15$ with a pair of such octahedral dice?
-Answer: $\frac{1}{32}$
+Answer: $\\frac{1}{32}$
 ###
 Problem: The first three terms of an arithmetic sequence are 1, 10 and 19, respectively. What is the value of the 21st term?
 Answer: $181$
 ###
-Problem: Calculate $6 \cdot 8\frac{1}{3}
+Problem: Calculate $6 \\cdot 8\\frac{1}{3}$
 Answer: $50$
 ###
 Problem: When the binary number $100101110010_2$ is divided by 4, what is the remainder (give your answer in base 10)?
 Answer: $2$
 ###
-Problem: How many zeros are at the end of the product 25 $\times$ 240?
+Problem: How many zeros are at the end of the product 25 $\\times$ 240?
 Answer: $3$
 ###
-Problem: What is $\dbinom{n}{n}$ for any positive integer $n$?
-Answer: $
+Problem: What is $\\dbinom{n}{n}$ for any positive integer $n$?
+Answer: $1$
 """)
