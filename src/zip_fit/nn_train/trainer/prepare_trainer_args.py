@@ -43,7 +43,7 @@ def create_training_args(
         num_train_epochs=config.get('num_train_epochs', 1),  # Total training epochs.
         do_eval=True,
         eval_on_start=config.get('eval_on_start', True),     # Evaluate before training starts.
-        evaluation_strategy=config.get('evaluation_strategy', "steps"),  # Evaluate every few steps.
+        eval_strategy=config.get('eval_strategy', "steps"),  # Evaluate every few steps.
         eval_steps=config.get('eval_steps', 1),             # Evaluate after every steps.
         logging_steps=config.get('logging_steps', 1),       # Log metrics every steps.
         per_device_train_batch_size=config.get('per_device_train_batch_size', 2),

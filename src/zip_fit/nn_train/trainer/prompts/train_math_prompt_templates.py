@@ -16,6 +16,13 @@ def format_zipfit_math_select_prompt_to_prob_soln(
     Note: we replace with $X to avoid parser issues with f string when math text has latex.
     Note: this prompt is used also during training evals.
     """
-    prompt: str = prompt_template.replace("{$PROBLEM}", problem).replace("{$SOLUTION}", solution)
-    print(prompt) if debug else None
-    return prompt
+    try:
+        prompt: str = prompt_template.replace("{$PROBLEM}", problem).replace("{$SOLUTION}", solution)
+        print(prompt) if debug else None
+        return prompt
+    except Exception as e:
+        print(f'problem: {problem}')
+        print(f'solution: {solution}')
+        print(f"Error formatting prompt: {e}")
+        breakpoint()
+        return ""

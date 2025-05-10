@@ -33,11 +33,15 @@ def train(
     # - Prepare datasets using the appropriate specialized module
     ds_train = get_train_datasets(tokenizer, 
                                   dataset_name=config.get("training_dataset_name", "zipfit/math-select-06062025"), 
-                                  split=config.get("training_split", "train"), config=config)
+                                  split=config.get("training_split", "train"), 
+                                  config=config)
     ds_eval = get_train_datasets(tokenizer, 
-                                 dataset_name=config.get("training_eval_dataset_name", "Putnam-AXIOM-for-zip-fit-splits"), 
-                                 split=config.get("training_eval_split", "validation"), config=config)
-    ds_tf_eval = get_eval_tf_datasets(tokenizer, split=config.get("training_tf_eval_split", "validation"), config=config)
+                                 dataset_name=config.get("training_eval_dataset_name", "zipfit/Putnam-AXIOM-for-zip-fit-splits"), 
+                                 split=config.get("training_eval_split", "validation"), 
+                                 config=config)
+    ds_tf_eval = get_eval_tf_datasets(dataset_name=config.get("training_tf_eval_dataset_name", "zipfit/Putnam-AXIOM-for-zip-fit-splits"), 
+                                     split=config.get("training_tf_eval_split", "validation"), 
+                                     config=config)
     
     # - Create trainer using the dedicated module
     trainer, output_dir = create_trainer(

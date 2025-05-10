@@ -19,7 +19,7 @@ export num_train_epochs=None
 
 export do_eval=True
 export eval_on_start=True
-export evaluation_strategy="steps"
+export eval_strategy="steps"
 export eval_steps=50
 export logging_steps=10
 export per_device_train_batch_size=1
@@ -58,7 +58,7 @@ python -m zip_fit.nn_train.train \
   -num_train_epochs $num_train_epochs \
   -do_eval $do_eval \
   -eval_on_start $eval_on_start \
-  -evaluation_strategy $evaluation_strategy \
+  -eval_strategy $eval_strategy \
   -eval_steps $eval_steps \
   -logging_steps $logging_steps \
   -per_device_train_batch_size $per_device_train_batch_size \

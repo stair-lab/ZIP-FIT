@@ -90,8 +90,10 @@ def get_train_datasets(
                 )
             ]},
             batched=True,
+            # batched=False,
             remove_columns=ds_train.column_names,
-            num_proc=48,
+            # num_proc=48,
+            num_proc=1,
         )
 
         # 2nd Stage: tokenize and group text into blocks
