@@ -1,5 +1,5 @@
 # - Args
-export model_name="openai-community/gpt2"
+# export model_name="openai-community/gpt2"
 # export model_name="Qwen/Qwen2.5-0.5B"
 # export model_name="google/gemma-2-2b"
 # export model_name="google/internlm2-math-plus-1_8b"
@@ -7,11 +7,16 @@ export model_name="openai-community/gpt2"
 # export model_name="meta-llama/Llama-3.2-3B"
 # since 3.1 8B gives issues with vvlm we are using 8B instead ref: https://github.com/vllm-project/vllm/issues/7382
 # export model_name="meta-llama/Meta-Llama-3-8B"
-# export model_name="meta-llama/Meta-Llama-3-8B-Instruct"
+export model_name="meta-llama/Meta-Llama-3-8B-Instruct"
 # export model_name="google/codegemma-2b"
 
 # - Training parameters - optimized to prevent OOM issues
-export num_train_epochs=1
+# export max_steps=-1
+# export num_train_epochs=1
+
+export max_steps=1
+export num_train_epochs=None
+
 export do_eval=True
 export eval_on_start=True
 export evaluation_strategy="steps"
@@ -32,9 +37,11 @@ export lr_scheduler_type="constant_with_warmup"
 export warmup_ratio=0.05
 
 export training_dataset_name="zipfit/math-select-06062025"
-export training_split="train"
+export training_split="src"
+
 export training_eval_dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"
 export training_eval_split="test"
+
 export training_tf_eval_dataset_name="zipfit/Putnam-AXIOM-for-zip-fit-splits"
 export training_tf_eval_split="test"
 
@@ -45,6 +52,7 @@ export mode="dryrun"
 
 # - Run
 export CUDA_VISIBLE_DEVICES=0
+conda activate zip_fit
 python -m zip_fit.nn_train.train \
   -model_name $model_name \
   -num_train_epochs $num_train_epochs \
@@ -66,4 +74,6 @@ python -m zip_fit.nn_train.train \
   -gradient_checkpointing $gradient_checkpointing \
   -lr_scheduler_type $lr_scheduler_type \
   -warmup_ratio $warmup_ratio \
-  -final_model_name $final_model_name
+  -final_model_name $final_model_name \
+  -max_steps $max_steps \
+  -training_split $training_split

@@ -1,5 +1,6 @@
 import torch
 from transformers import AutoTokenizer, PreTrainedModel
+from datasets import Dataset
 
 def tfa_teacher_forced_accuracy(
     prompt: str,
@@ -24,11 +25,14 @@ def tfa_teacher_forced_accuracy(
       - We do not forcibly add BOS or EOS here. We skip it to match a "bare-bones" style,
         similar to the updated tfa.py that also ignores explicit BOS/EOS tokens.
       - If the combined text is truncated or too short, we return 0.0 as a fallback.
+
+    Correctness:
+      - We allow the to
     """
     # 1) Combine text
     combined_text = prompt + "\n\n" + gold_response
 
-    # 2) Use the tokenizer from the same `repo` to ensure consistency
+    # 2) Get tokenizer from the `repo` -- getting from repo to ensure user doesn't give the wrong tokenizer TODO verify this statement with more sanity checks
     tokenizer = AutoTokenizer.from_pretrained(repo, trust_remote_code=True)
 
     # 3) Tokenize entire reference
@@ -70,7 +74,7 @@ def tfa_teacher_forced_accuracy(
 
 
 def compute_tfa_for_subds(
-    sub_ds,
+    sub_ds: Dataset,
     model: PreTrainedModel,
     repo: str, # HF repo name needed to load the correct tokenizer
     device: str = "cuda",

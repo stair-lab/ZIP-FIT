@@ -26,6 +26,7 @@ def compute_log_likelihood(
     gold_reference: str,
     dtype: str = "bfloat16",
     set_rok_performance_env_vars: bool = False, 
+    trust_remote_code: bool = True,
 ) -> Dict[str, Union[float, List[float]]]:
     """
     Compile log likelihood of a gold reference given a prompt using vLLM.
@@ -35,6 +36,8 @@ def compute_log_likelihood(
         prompt: The input prompt text
         gold_reference: The gold reference text to compute likelihood for
         dtype: Model precision ("bfloat16", "float16", etc.)
+        set_rok_performance_env_vars: Whether to set performance environment variables
+        trust_remote_code: Whether to trust remote code when loading the model
         
     Returns:
         Dictionary with token-level and sequence-level log probabilities
@@ -44,7 +47,7 @@ def compute_log_likelihood(
         set_performance_env_vars()
     
     # Load model with vLLM
-    model = LLM(model=model_path, dtype=dtype)
+    model = LLM(model=model_path, dtype=dtype, trust_remote_code=trust_remote_code)
     print(f"Loaded model from {model_path}")
     
     # Prepare full text (prompt + gold reference)
@@ -116,6 +119,7 @@ def compute_log_likelihood_for_dataset(
     model_path: str,
     dtype: str = "bfloat16",
     debug: bool = False,
+    trust_remote_code: bool = True,
 ) -> float:
     """
     Process an entire subset of data (sub_ds) and compute the average log likelihood of gold references across all examples.
@@ -125,6 +129,7 @@ def compute_log_likelihood_for_dataset(
       model_path: Path to the model on HuggingFace or local path.
       dtype: Model precision ("bfloat16", "float16", etc.)
       debug: Whether to print debug information.
+      trust_remote_code: Whether to trust remote code when loading the model
 
     Returns:
       float: The average per-token log probability across all examples.
@@ -141,7 +146,8 @@ def compute_log_likelihood_for_dataset(
             model_path=model_path,
             prompt=prompt,
             gold_reference=gold_response,
-            dtype=dtype
+            dtype=dtype,
+            trust_remote_code=trust_remote_code
         )
         
         # Get the average log probability per token

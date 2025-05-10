@@ -1,14 +1,20 @@
-def format_gsm8k_prompt(question: str, answer: str, final_answer: str) -> str:
-    """ Format a prompt for GSM8K math problems. """
+def format_gsm8k_prompt_to_q_a_fa(question: str, answer: str, final_answer: str) -> str:
+    """ Format a prompt for GSM8K math problems in the q,a,####fa format. """
     # TODO double check if it's capitalized, and one new line or two.
     return f'question: {question}\nanswer: {answer}\n### {final_answer}'
 
-# Given MINERVA math prompt an eval bellow is the train & data setect format.
-MATH_SELECT_TRAIN_PROMPT_TEMPLATE: str = "Problem:\n{$PROBLEM}\n\nSolution:\n{$SOLUTION}\n\n"
-def get_zipfit_math_train_prompt(problem: str, solution: str, prompt_template: str = MATH_SELECT_TRAIN_PROMPT_TEMPLATE, debug: bool = False) -> str:
+# Given MINERVA math prompt at eval, the bellow is the train & data setect format.
+PUTNAM_TRAIN_AND_TRAIN_EVAL_PROBLEM_SOLUTION_PROMPT_TEMPLATE: str = "Problem:\n{$PROBLEM}\n\nSolution:\n{$SOLUTION}\n\n"
+def format_zipfit_math_select_prompt_to_prob_soln(
+        problem: str, 
+        solution: str, 
+        prompt_template: str = PUTNAM_TRAIN_AND_TRAIN_EVAL_PROBLEM_SOLUTION_PROMPT_TEMPLATE, 
+        debug: bool = False) -> str:
     """
-    Note: we replace with $X instead of .format() because if the mathematical text has {} due to latex, 
-    it will confuse python's .format() parser.
+    Format a prompt for Putnam math problems in the Problem...Solution... format.
+
+    Note: we replace with $X to avoid parser issues with f string when math text has latex.
+    Note: this prompt is used also during training evals.
     """
     prompt: str = prompt_template.replace("{$PROBLEM}", problem).replace("{$SOLUTION}", solution)
     print(prompt) if debug else None

@@ -41,37 +41,41 @@ def prepare_proofnet_tf_eval_dataset(ds_tf_eval: Dataset) -> Dataset:
         num_proc=48
     )
 
-def get_eval_tf_datasets(config: dict = {}) -> Dataset:
+def get_eval_tf_datasets(
+        # tokenizer, # To avoid user setting up the tokenizer incorrectly for this data set, we don't pass it in (for now).
+        dataset_name: str,
+        split: Optional[str] = None, 
+        config: dict = {}
+        ) -> Dataset:
     """
     Get evaluation datasets for teacher-forced evaluation.
     """
-    training_eval_tf_dataset_name = config.get("training_eval_tf_dataset_name", "zipfit/math-select-06062025")
-    training_eval_tf_split = config.get("training_eval_tf_split", "train")
+    training_eval_tf_split = config.get("training_eval_tf_split", "train") if split is None else split
     max_eval_tf_samples: Optional[int] = config.get('max_eval_tf_samples', None)
     split_str = f'{training_eval_tf_split}[:{max_eval_tf_samples}]' if max_eval_tf_samples else training_eval_tf_split
 
-    if 'Putnam-AXIOM-for-zip-fit-splits' in training_eval_tf_dataset_name:
-        ds_tf_eval = load_dataset(training_eval_tf_dataset_name, split=split_str).with_format('torch')
+    if 'Putnam-AXIOM-for-zip-fit-splits' in dataset_name:
+        ds_tf_eval = load_dataset(dataset_name, split=split_str).with_format('torch')
         # 1st Stage: Prepare strings
         ds_tf_eval = prepare_putnam_tf_eval_dataset(ds_tf_eval)
 
         # 2nd Stage: Tokenize and group text into blocks
         pass # Due to how TF evals work tokenization is done in the tf function.
-    elif 'gsm8k' in training_eval_tf_dataset_name:
-        ds_tf_eval = load_dataset(training_eval_tf_dataset_name, split=split_str).with_format('torch')
+    elif 'gsm8k' in dataset_name:
+        ds_tf_eval = load_dataset(dataset_name, split=split_str).with_format('torch')
         # 1st Stage: Prepare strings
         ds_tf_eval = prepare_gsm8k_tf_eval_dataset(ds_tf_eval)
 
         # 2nd Stage: Tokenize and group text into blocks
         pass # Due to how TF evals work tokenization is done in the tf function.    
-    elif 'UDACA/proofnet-v3-lean4' in training_eval_tf_dataset_name:
-        ds_tf_eval = load_dataset(training_eval_tf_dataset_name, split=split_str).with_format('torch')
+    elif 'UDACA/proofnet-v3-lean4' in dataset_name:
+        ds_tf_eval = load_dataset(dataset_name, split=split_str).with_format('torch')
         # 1st Stage: Prepare strings
         ds_tf_eval = prepare_proofnet_tf_eval_dataset(ds_tf_eval)
 
         # 2nd Stage: Tokenize and group text into blocks
         pass # Due to how TF evals work tokenization is done in the tf function.
     else:
-        raise ValueError(f"Unsupported dataset name: {training_eval_tf_dataset_name}")
+        raise ValueError(f"Unsupported dataset name: {dataset_name}")
 
     return ds_tf_eval

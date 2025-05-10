@@ -32,8 +32,8 @@ src_datasets = [
     ('brando/hendrycks_math', 'train', 5_500),
     ('TIGER-Lab/MathInstruct', 'train', 3_000), # Mammoth = "COT & POP"
     ('TIGER-Lab/WebInstructSub', 'train', 3_000), # Mammoth 2 = "Problem:...Soln:...pairs from CC made into pairs by LLMs"
-    ('brando/small-open-web-math-dataset-v2', 'train', 9_000),
     ('openai/gsm8k', 'train', 7_473),
+    ('brando/small-open-web-math-dataset-v2', 'train', 9_000),
 
     # ~50-75% unrelated or really bad data
     ('brando/small-c4-dataset', 'train', 10_000), 

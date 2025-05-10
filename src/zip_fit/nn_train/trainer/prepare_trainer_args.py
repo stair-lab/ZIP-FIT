@@ -37,7 +37,7 @@ def create_training_args(
     
     # Create training arguments
     training_args = TrainingArguments(
-        # max_steps=2, # for debugging
+        max_steps=config.get('max_steps', -1),  # -1 means train for full epochs, positive for limited steps
         output_dir=str(output_dir),  # Main output directory.
         do_train=True,
         num_train_epochs=config.get('num_train_epochs', 1),  # Total training epochs.
