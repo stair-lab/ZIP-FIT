@@ -11,11 +11,13 @@ export model_name="meta-llama/Meta-Llama-3-8B-Instruct"
 # export model_name="google/codegemma-2b"
 
 # - Training parameters - optimized to prevent OOM issues
+# real run
 # export max_steps=-1
 # export num_train_epochs=1
 
+# debug run
 export max_steps=1
-export num_train_epochs=None
+export num_train_epochs=-1
 
 export do_eval=True
 export eval_on_start=True

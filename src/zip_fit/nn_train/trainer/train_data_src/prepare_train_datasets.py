@@ -85,15 +85,12 @@ def get_train_datasets(
         ds_train = ds_train.map(
             lambda batch: {"text": [
                 format_zipfit_math_select_prompt_to_prob_soln(
-                    batch["problem"], 
-                    batch["solution"], 
-                )
+                    problem, solution 
+                ) for problem, solution in zip(batch["problem"], batch["solution"])
             ]},
             batched=True,
-            # batched=False,
             remove_columns=ds_train.column_names,
-            # num_proc=48,
-            num_proc=1,
+            num_proc=48,
         )
 
         # 2nd Stage: tokenize and group text into blocks
