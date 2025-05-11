@@ -44,6 +44,9 @@ def load_model_and_tok(config: Dict[str, Any] = {}) -> Tuple[AutoModelForCausalL
     model_name = config.get('model_name', 'meta-llama/Meta-Llama-3-8B-Instruct')
     print(f'Loading model: {model_name}')
     
+    # Define device - initialize it here so it's defined for all code paths
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    
     # Determine torch data type for model loading
     torch_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32
     print(f'Using torch dtype: {torch_dtype}')
@@ -65,7 +68,6 @@ def load_model_and_tok(config: Dict[str, Any] = {}) -> Tuple[AutoModelForCausalL
             attn_implementation='eager',  # Crucial for Gemma-2
             trust_remote_code=True
         )
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model = model.to(device)
     # Other Gemma models
     elif 'gemma-' in str(model_name):
@@ -82,7 +84,6 @@ def load_model_and_tok(config: Dict[str, Any] = {}) -> Tuple[AutoModelForCausalL
             torch_dtype=torch_dtype,
             trust_remote_code=True
         )
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         model = model.to(device)
         
         # Handle missing pad token
@@ -91,13 +92,14 @@ def load_model_and_tok(config: Dict[str, Any] = {}) -> Tuple[AutoModelForCausalL
             print(f"Warning: EOS and PAD tokens are the same: {tokenizer.eos_token}")
     # All Qwen models
     elif 'Qwen' in str(model_name):
+        # If device_map is auto, let HF handle device placement automatically
+        device_map = config.get('device_map', 'auto')
         model = AutoModelForCausalLM.from_pretrained(
             model_name, 
             torch_dtype=torch_dtype, 
             trust_remote_code=True, 
-            device_map=config.get('device_map', 'auto')
+            device_map=device_map
         )
-        
     # Unsupported models
     else:
         raise ValueError(f'Error: Model not supported: {model_name}')

@@ -10,7 +10,7 @@ import torch
 from transformers import Trainer, AutoModelForCausalLM, AutoTokenizer, TrainingArguments, TrainerCallback
 from datasets import Dataset
 
-from zip_fit.nn_train.trainer.prepare_trainer_args import create_training_args
+from zip_fit.nn_train.trainer.prepare_training_args import create_training_args
 from zip_fit.nn_train.callbacks.tfa_callback import TfaCallback
 
 def create_trainer(

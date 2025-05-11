@@ -90,6 +90,7 @@ def _main(**kwargs):
     run_name = f'{kwargs}' 
     project: str = kwargs.get('project', 'zip-fit-train')
     run = wandb.init(mode=kwargs.get('mode', 'dryrun'), project=project, name=run_name, save_code=True, config=kwargs)
+    print(f'{run.get_url()=}')
     wandb.save(__file__) # save current code now, don't wait to wandb.finish, also useful: wandb.save("*.py") # upload all .py files in current directory
     print(f'Kwargs to run:\n{kwargs}')
     train(kwargs)

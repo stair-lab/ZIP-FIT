@@ -61,6 +61,7 @@ def create_training_args(
         warmup_ratio=config.get('warmup_ratio', 0.05),
         seed=seed,
         data_seed=config.get('data_seed', seed),
+        report_to=config.get('report_to', 'wandb'),
         # Additional optional parameters
         **{k: v for k, v in config.items() if k in [
             'push_to_hub', 'hub_model_id', 'remove_unused_columns', 'torch_compile'

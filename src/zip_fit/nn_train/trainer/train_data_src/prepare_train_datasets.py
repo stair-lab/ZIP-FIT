@@ -11,13 +11,14 @@ def get_train_datasets(
         config: dict = {}
         ) -> Dataset:
     """ Get the training dataset. """
+    print(f'--\n{dataset_name=} {split=}\n')
     block_size: int = config.get('block_size', 1024)
     max_samples: Optional[int] = config.get('max_train_samples', None)
     training_split: str = config.get("training_split", "train") if split is None else split # might override split if you want the data in the train format for evaluating CE during training.
     split_str: str = f'{training_split}[:{max_samples}]' if max_samples else training_split
     
     # Load datasets based on name
-    if dataset_name.startswith("zipfit/math-select"):
+    if dataset_name.startswith("zipfit/math-select") or dataset_name.startswith("UDACA/DSIR-train") or dataset_name.startswith("UDACA/ZIPFIT-train"):
         ds_train = load_dataset(dataset_name, split=split_str).with_format('torch')
         # One-pass tokenise-and-group
         ds_train = ds_train.map(
