@@ -118,7 +118,7 @@ If you want vLLM for flash attention, you can install it via `lm_eval[vllm]`:
 # If the bellow are not already there:
 pip install lm_eval[vllm]
 # If you find version issues, pin it:
-# pip install vllm==0.6.4.post1  # requires cuda 12.4
+# pip install vllm==0.6.4.post1  # requires cuda 12.4, maybe not needed? 0.8.5.post1 shows up in skampere1 now
 
 pip install antlr4-python3-runtime==4.11
 

@@ -13,6 +13,7 @@ def get_train_datasets(
     """ Get the training dataset. """
     print(f'--\n{dataset_name=} {split=}\n')
     block_size: int = config.get('block_size', 1024)
+    print(f'{block_size=}')
     max_samples: Optional[int] = config.get('max_train_samples', None)
     training_split: str = config.get("training_split", "train") if split is None else split # might override split if you want the data in the train format for evaluating CE during training.
     split_str: str = f'{training_split}[:{max_samples}]' if max_samples else training_split
@@ -23,7 +24,7 @@ def get_train_datasets(
         # One-pass tokenise-and-group
         ds_train = ds_train.map(
             lambda batch: tokenize_and_group_texts_via_blocks(
-                batch, tokenizer=tokenizer, block_size=1024
+                batch, tokenizer=tokenizer, block_size=block_size
             ),
             batched=True,
             remove_columns=ds_train.column_names,   # drop *all* original columns, incl. "text"

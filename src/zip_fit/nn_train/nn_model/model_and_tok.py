@@ -100,6 +100,13 @@ def load_model_and_tok(config: Dict[str, Any] = {}) -> Tuple[AutoModelForCausalL
             trust_remote_code=True, 
             device_map=device_map
         )
+    # InternLM models
+    elif 'internlm' in str(model_name):
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, 
+            torch_dtype=torch_dtype, 
+            trust_remote_code=True
+        )
     # Unsupported models
     else:
         raise ValueError(f'Error: Model not supported: {model_name}')

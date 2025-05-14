@@ -23,6 +23,9 @@
 		},
 		{
 			"path": "../putnam-axiom"
+		},
+		{
+			"path": "../lm-evaluation-harness"
 		}
 	],
 	"settings": {}
