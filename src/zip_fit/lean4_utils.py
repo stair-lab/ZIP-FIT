@@ -1,4 +1,5 @@
 import os
+import traceback
 from typing import List, Dict
 
 from pantograph.server import Server
@@ -7,11 +8,21 @@ from pantograph.data import CompilationUnit
 import re
 
 # Real Server That Talks to Lean 4 from Python
-default_server = Server(
-    imports=["Mathlib", "Init"], 
-    project_path=os.path.expanduser("~/mathlib_4_15_0_lfs"),
-    timeout=60,
-)
+try:
+    default_server = Server(
+        imports=["Init"], 
+        # imports=["Mathlib", "Init"], 
+        project_path=os.path.expanduser("~/mathlib4"),
+        timeout=120,
+    )
+    print("Successfully initialized Lean4 server with Mathlib.")
+except Exception as e:
+    print("\n=== WARNING: Failed to initialize Lean4 server with Mathlib ===")
+    traceback.print_exc()
+    default_server = Server(
+        imports=["Init"],  # Only basic Init, no Mathlib
+        timeout=180,  # Increased timeout for safety
+    )
 
 def parse_lean_completion(llm_output: str) -> str:
     """

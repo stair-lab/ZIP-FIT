@@ -181,6 +181,7 @@ echo 'def main : IO Unit := IO.println "Lean works!"' | lake env lean --run --st
 # Clone or go to your mathlib4 or mathlib4_15_0 folder
 cd ~
 
+# NOTE: we clone it from GitHub cuz in this context we need mathlib for evals, not for developing a Lean project itself
 # Download mathlib4 name it mathlib4_15_0 repository from GitHub
 git clone --branch releases/v4.15.0 https://github.com/leanprover-community/mathlib4.git mathlib4_15_0
 
