@@ -1,0 +1,149 @@
+import os
+import time
+from typing import Dict, Any
+
+from datasets import load_dataset
+import torch
+
+from zip_fit.metrics.log_likelihoods_gold_ref import compute_log_likelihood, compute_log_likelihood_for_dataset
+from zip_fit.utils import seed_everything
+
+def test_log_likelihood(config: Dict[str, Any] = {}):
+    # - Seed everything
+    seed_everything(config.get('seed', 42))
+
+    # - Test a simple example
+    model_path: str = config.get('model_path', 'meta-llama/Meta-Llama-3-8B-Instruct')
+    prompt: str = "Question: 1 + 1 = ?\n\n"
+    gold_reference: str = "Solution: The answer is 2.\n\n"
+    
+    # Compute log likelihood for the simple example
+    result = compute_log_likelihood(
+        model_path=model_path,
+        prompt=prompt,
+        gold_reference=gold_reference,
+        dtype="bfloat16",
+        trust_remote_code=True
+    )
+    
+    print(f"Token log probabilities: {result['token_logprobs']}")
+    print(f"Sequence log probability: {result['sequence_logprob']}")
+    print(f"Per-token average log probability: {result['per_token_avg_logprob']}")
+
+def test_log_likelihood_with_proof_net():
+    """
+    Test log likelihood computation with the ProofNet dataset, similar to the TFA tests.
+    """
+    global_start_time = time.time()  # Start overall timer
+    os.environ['CUDA_VISIBLE_DEVICES'] = '4'  # choose GPU
+    seed_everything()
+
+    # 1) Load the ProofNet validation set
+    ds = load_dataset("hoskinson-center/proofnet", split="validation")
+
+    # Custom prompt format function
+    def my_prompt_format(prompt: str) -> str:
+        return (
+            "Translate the natural language version of the mathematical statement "
+            f"to a formal Lean version:\n{prompt}\n"
+        )
+    ds = ds.map(lambda example: {'prompt': 
+                                 my_prompt_format(example['nl_statement']), 
+                                 'gold_response': example['formal_statement']}, 
+                                 num_proc=48)
+
+    # We'll just do the first N examples for demonstration
+    N = 5
+    sub_ds = ds.select(range(min(N, len(ds))))
+
+    # 2) Our model list with more compatible models
+    model_configs = [
+        # {
+        #     "name": "internlm2-math-plus-1_8b",
+        #     "repo": "internlm/internlm2-math-plus-1_8b",
+        # },
+        # {
+        #     "name": "google/gemma-2-2b",
+        #     "repo": "google/gemma-2-2b",
+        # },
+        # {
+        #     "name": "Mistral-7B-v0.1",
+        #     "repo": "mistralai/Mistral-7B-v0.1",
+        # },
+        # {
+        #     "name": "google/codegemma-2b",
+        #     "repo": "google/codegemma-2b",
+        # },
+        # {
+        #     "name": "GPT-2 (small)",
+        #     "repo": "gpt2",
+        # },
+        {
+            "name": "Meta-Llama-3-8B-Instruct",
+            "repo": "meta-llama/Meta-Llama-3-8B-Instruct",
+        },
+        {
+            "name": "Meta-Llama-3-8B",
+            "repo": "meta-llama/Meta-Llama-3-8B",
+        },
+    ]
+
+    for config in model_configs:
+        model_name = config["name"]
+        model_path = config["repo"]
+        print(f'{model_name=}\n{model_path=}\n\n')
+
+        print(f"\nEvaluating {model_name} on {N} example(s) of ProofNet validation.")
+
+        # Start per-model timer
+        model_start_time = time.time()
+
+        # Compute log likelihood for dataset
+        avg_logprob = compute_log_likelihood_for_dataset(
+            sub_ds=sub_ds,
+            model_path=model_path,
+            dtype="bfloat16",
+            debug=True,
+            trust_remote_code=True
+        )
+
+        # End per-model timer
+        model_end_time = time.time()
+        model_seconds = model_end_time - model_start_time
+
+        print(f" => Average per-token log probability for {model_name} on these {N} example(s) = {avg_logprob:.4f}")
+        print(f" => Time to compute log likelihood for {model_name}: {model_seconds:.2f} seconds.")
+
+    # End overall timer
+    global_end_time = time.time()
+    total_seconds = global_end_time - global_start_time
+    print(f"\nDone. Total run time for all models: {total_seconds:.2f} seconds.")
+
+def main():
+    """ Run all tests. """
+    test_log_likelihood()
+    test_log_likelihood_with_proof_net()
+
+def _main(**kwargs):
+    from datetime import datetime
+    from socket import gethostname
+    import wandb
+    today = datetime.now().strftime('%Y_m%m_d%d_t%Hh_%Mm_%Ss') # eg '2024_m01_d22_t13h_00m_30s'
+    tmux_sess_num = None
+    kwargs = kwargs | {'today': today, 'tmux_sess_num': tmux_sess_num, 'hostname': gethostname()}
+    run_name = f'{kwargs}' 
+    project: str = kwargs.get('project', 'zip-fit-log-likelihood-tests')
+    run = wandb.init(mode=kwargs.get('mode', 'dryrun'), project=project, name=run_name, save_code=True, config=kwargs)
+    wandb.save(__file__) # save current code now, don't wait to wandb.finish
+    print(f'Kwargs to run:\n{kwargs}')
+    main()
+    run.alert(title="Run Completed", text=f"Run finished, run url: {run.get_url()}")
+    print(f'{run.get_url()=}')
+    wandb.finish()
+
+if __name__ == "__main__":
+    import fire
+    import time
+    start_time = time.time()
+    fire.Fire(_main)
+    print(f"\aTime taken: {time.time() - start_time:.2f} seconds, or {(time.time() - start_time) / 60:.2f} minutes, or {(time.time() - start_time) / 3600:.2f} hours.\a")

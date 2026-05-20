@@ -1,5 +1,0 @@
-eval
-main
-metrics
-old
-train

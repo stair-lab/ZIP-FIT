@@ -14,6 +14,18 @@
 		},
 		{
 			"path": "../veribench"
+		},
+		{
+			"path": "../gold-ai-olympiad"
+		},
+		{
+			"path": "../beyond-scale-2-alignment-coeff"
+		},
+		{
+			"path": "../putnam-axiom"
+		},
+		{
+			"path": "../lm-evaluation-harness"
 		}
 	],
 	"settings": {}

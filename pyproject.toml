@@ -47,8 +47,9 @@ dependencies = [
     "einops",
     "sentencepiece",
     "brotli",
+    "pexpect",
     "lm_eval[vllm]",
-    "vllm==0.6.4.post1",
+    # "vllm==0.6.4.post1", # requires cuda 12.4
     "antlr4-python3-runtime==4.11",
 ]
 
@@ -61,9 +62,10 @@ dev = [
 ]
 
 [tool.setuptools]
-package-dir = {"" = "zip_fit"}
+# Automatically find packages under src/
+package-dir = {"" = "src"} 
 
 [tool.setuptools.packages.find]
-where = ["zip_fit"]
-include = ["*"]
-exclude = ["*.tests", "*.tests.*", "tests.*", "tests"]
+where = ["src"]  # Limit package discovery to the 'src/' directory
+include = ["zip_fit*"]  # Include the 'zip_fit' package and any of its subpackages
+exclude = ["*.tests", "*.tests.*", "tests.*", "tests"]  # Exclude test-related packages from distribution

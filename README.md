@@ -118,7 +118,7 @@ If you want vLLM for flash attention, you can install it via `lm_eval[vllm]`:
 # If the bellow are not already there:
 pip install lm_eval[vllm]
 # If you find version issues, pin it:
-pip install vllm==0.6.4.post1
+# pip install vllm==0.6.4.post1  # requires cuda 12.4, maybe not needed? 0.8.5.post1 shows up in skampere1 now
 
 pip install antlr4-python3-runtime==4.11
 
@@ -181,6 +181,7 @@ echo 'def main : IO Unit := IO.println "Lean works!"' | lake env lean --run --st
 # Clone or go to your mathlib4 or mathlib4_15_0 folder
 cd ~
 
+# NOTE: we clone it from GitHub cuz in this context we need mathlib for evals, not for developing a Lean project itself
 # Download mathlib4 name it mathlib4_15_0 repository from GitHub
 git clone --branch releases/v4.15.0 https://github.com/leanprover-community/mathlib4.git mathlib4_15_0
 
@@ -220,7 +221,7 @@ cd ~/mathlib4_15_0 && lake build
 #   --> https://github.com/stanford-centaur/PyPantograph/issues/89
 #   --> https://proofassistants.stackexchange.com/questions/4848/quick-one-liner-to-verify-mathlib4-installation-eg-with-lean-4-15-0
 #   --> https://chatgpt.com/c/67da423c-e384-8001-a934-eadf6aca7b11
-# since there is no lean project specified here, this cannot be tested but it woulb like:
+# since there is no lean project specified here, this cannot be tested but it would like:
 cd ~/veribench/lean_src_proj
 echo -e 'import Mathlib.Topology.Basic\n#check TopologicalSpace' | lake env lean --stdin
 # Output: TopologicalSpace.{u} (X : Type u) : Type u
@@ -330,6 +331,7 @@ poetry config virtualenvs.create false
 # Check you have somewhere poetry
 which poetry
 # Build the distributable package for PyPantograph using Poetry
+cd ~/PyPantograph
 poetry build
 # Install the package in the current environment using Poetry
 poetry install

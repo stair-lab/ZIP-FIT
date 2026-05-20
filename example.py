@@ -1,5 +1,5 @@
 from datasets import load_dataset
-from zip_fit import ZIPFIT
+from zip_fit.asdf import ZIPFIT
 
 # Define the paths and target dataset
 source_dataset = "/path/to/source_data.jsonl"
