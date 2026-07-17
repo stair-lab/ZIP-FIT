@@ -1,0 +1,372 @@
+\begin{thebibliography}{45}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Abbas et~al.(2023)Abbas, Tirumala, Simig, Ganguli, and
+  Morcos]{semdedup}
+Amro Abbas, Kushal Tirumala, Dániel Simig, Surya Ganguli, and Ari~S. Morcos.
+\newblock Semdedup: Data-efficient learning at web-scale through semantic
+  deduplication, 2023.
+\newblock URL \url{https://arxiv.org/abs/2303.09540}.
+
+\bibitem[Austin et~al.(2021)Austin, Odena, Nye, Bosma, Michalewski, Dohan,
+  Jiang, Cai, Terry, Le, and Sutton]{austin2021programsynthesislargelanguage}
+Jacob Austin, Augustus Odena, Maxwell Nye, Maarten Bosma, Henryk Michalewski,
+  David Dohan, Ellen Jiang, Carrie Cai, Michael Terry, Quoc Le, and Charles
+  Sutton.
+\newblock Program synthesis with large language models, 2021.
+\newblock URL \url{https://arxiv.org/abs/2108.07732}.
+
+\bibitem[Azerbayev et~al.(2024)Azerbayev, Schoelkopf, Paster, Santos, McAleer,
+  Jiang, Deng, Biderman, and Welleck]{azerbayev2024llemmaopenlanguagemodel}
+Zhangir Azerbayev, Hailey Schoelkopf, Keiran Paster, Marco~Dos Santos, Stephen
+  McAleer, Albert~Q. Jiang, Jia Deng, Stella Biderman, and Sean Welleck.
+\newblock Llemma: An open language model for mathematics, 2024.
+\newblock URL \url{https://arxiv.org/abs/2310.10631}.
+
+\bibitem[Bojanowski et~al.(2017)Bojanowski, Grave, Joulin, and
+  Mikolov]{enrichingWordVectorsWithSubwordInfo}
+Piotr Bojanowski, Edouard Grave, Armand Joulin, and Tomas Mikolov.
+\newblock Enriching word vectors with subword information, 2017.
+\newblock URL \url{https://arxiv.org/abs/1607.04606}.
+
+\bibitem[Brown et~al.(2020)Brown, Mann, Ryder, Subbiah, Kaplan, Dhariwal,
+  Neelakantan, Shyam, Sastry, Askell, Agarwal, Herbert-Voss, Krueger, Henighan,
+  Child, Ramesh, Ziegler, Wu, Winter, Hesse, Chen, Sigler, Litwin, Gray, Chess,
+  Clark, Berner, McCandlish, Radford, Sutskever, and
+  Amodei]{brown2020languagemodelsfewshotlearners}
+Tom~B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan,
+  Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda
+  Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan,
+  Rewon Child, Aditya Ramesh, Daniel~M. Ziegler, Jeffrey Wu, Clemens Winter,
+  Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray,
+  Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford,
+  Ilya Sutskever, and Dario Amodei.
+\newblock Language models are few-shot learners, 2020.
+\newblock URL \url{https://arxiv.org/abs/2005.14165}.
+
+\bibitem[Delétang et~al.(2024)Delétang, Ruoss, Duquenne, Catt, Genewein,
+  Mattern, Grau-Moya, Wenliang, Aitchison, Orseau, Hutter, and
+  Veness]{languagemodelingcompression}
+Grégoire Delétang, Anian Ruoss, Paul-Ambroise Duquenne, Elliot Catt, Tim
+  Genewein, Christopher Mattern, Jordi Grau-Moya, Li~Kevin Wenliang, Matthew
+  Aitchison, Laurent Orseau, Marcus Hutter, and Joel Veness.
+\newblock Language modeling is compression, 2024.
+\newblock URL \url{https://arxiv.org/abs/2309.10668}.
+
+\bibitem[Du et~al.(2022)Du, Huang, Dai, Tong, Lepikhin, Xu, Krikun, Zhou, Yu,
+  Firat, Zoph, Fedus, Bosma, Zhou, Wang, Wang, Webster, Pellat, Robinson,
+  Meier-Hellstern, Duke, Dixon, Zhang, Le, Wu, Chen, and
+  Cui]{glamefficientscalinglanguage}
+Nan Du, Yanping Huang, Andrew~M. Dai, Simon Tong, Dmitry Lepikhin, Yuanzhong
+  Xu, Maxim Krikun, Yanqi Zhou, Adams~Wei Yu, Orhan Firat, Barret Zoph, Liam
+  Fedus, Maarten Bosma, Zongwei Zhou, Tao Wang, Yu~Emma Wang, Kellie Webster,
+  Marie Pellat, Kevin Robinson, Kathleen Meier-Hellstern, Toju Duke, Lucas
+  Dixon, Kun Zhang, Quoc~V Le, Yonghui Wu, Zhifeng Chen, and Claire Cui.
+\newblock Glam: Efficient scaling of language models with mixture-of-experts,
+  2022.
+\newblock URL \url{https://arxiv.org/abs/2112.06905}.
+
+\bibitem[Gerstgrasser et~al.(2024)Gerstgrasser, Schaeffer, Dey, Rafailov,
+  Sleight, Hughes, Korbak, Agrawal, Pai, Gromov, Roberts, Yang, Donoho, and
+  Koyejo]{gerstgrasser2024modelcollapseinevitablebreaking}
+Matthias Gerstgrasser, Rylan Schaeffer, Apratim Dey, Rafael Rafailov, Henry
+  Sleight, John Hughes, Tomasz Korbak, Rajashree Agrawal, Dhruv Pai, Andrey
+  Gromov, Daniel~A. Roberts, Diyi Yang, David~L. Donoho, and Sanmi Koyejo.
+\newblock Is model collapse inevitable? breaking the curse of recursion by
+  accumulating real and synthetic data, 2024.
+\newblock URL \url{https://arxiv.org/abs/2404.01413}.
+
+\bibitem[Google(2023)]{palm2technicalreport2023}
+Google.
+\newblock Palm 2 technical report, 2023.
+\newblock URL \url{https://arxiv.org/abs/2305.10403}.
+
+\bibitem[Gururangan et~al.(2020)Gururangan, Marasović, Swayamdipta, Lo,
+  Beltagy, Downey, and Smith]{dontstoppretrainingadapt}
+Suchin Gururangan, Ana Marasović, Swabha Swayamdipta, Kyle Lo, Iz~Beltagy,
+  Doug Downey, and Noah~A. Smith.
+\newblock Don't stop pretraining: Adapt language models to domains and tasks,
+  2020.
+\newblock URL \url{https://arxiv.org/abs/2004.10964}.
+
+\bibitem[Hoffmann et~al.(2022)Hoffmann, Borgeaud, Mensch, Buchatskaya, Cai,
+  Rutherford, de~Las~Casas, Hendricks, Welbl, Clark, Hennigan, Noland,
+  Millican, van~den Driessche, Damoc, Guy, Osindero, Simonyan, Elsen, Rae,
+  Vinyals, and Sifre]{trainingcomputeoptimallargelanguage}
+Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor
+  Cai, Eliza Rutherford, Diego de~Las~Casas, Lisa~Anne Hendricks, Johannes
+  Welbl, Aidan Clark, Tom Hennigan, Eric Noland, Katie Millican, George van~den
+  Driessche, Bogdan Damoc, Aurelia Guy, Simon Osindero, Karen Simonyan, Erich
+  Elsen, Jack~W. Rae, Oriol Vinyals, and Laurent Sifre.
+\newblock Training compute-optimal large language models, 2022.
+\newblock URL \url{https://arxiv.org/abs/2203.15556}.
+
+\bibitem[Huang et~al.(2024)Huang, Zhang, Shan, and
+  He]{compressionrepresentsintelligencelinearly}
+Yuzhen Huang, Jinghan Zhang, Zifei Shan, and Junxian He.
+\newblock Compression represents intelligence linearly, 2024.
+\newblock URL \url{https://arxiv.org/abs/2404.09937}.
+
+\bibitem[Jiang et~al.(2023{\natexlab{a}})Jiang, Sablayrolles, Mensch, Bamford,
+  Chaplot, de~las Casas, Bressand, Lengyel, Lample, Saulnier, Lavaud, Lachaux,
+  Stock, Scao, Lavril, Wang, Lacroix, and Sayed]{mistral7b}
+Albert~Q. Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford,
+  Devendra~Singh Chaplot, Diego de~las Casas, Florian Bressand, Gianna Lengyel,
+  Guillaume Lample, Lucile Saulnier, Lélio~Renard Lavaud, Marie-Anne Lachaux,
+  Pierre Stock, Teven~Le Scao, Thibaut Lavril, Thomas Wang, Timothée Lacroix,
+  and William~El Sayed.
+\newblock Mistral 7b, 2023{\natexlab{a}}.
+\newblock URL \url{https://arxiv.org/abs/2310.06825}.
+
+\bibitem[Jiang et~al.(2022)Jiang, Yang, Tsirlin, Tang, and Lin]{jiang2022gzip}
+Zhiying Jiang, Matthew Y.~R. Yang, Mikhail Tsirlin, Raphael Tang, and Jimmy
+  Lin.
+\newblock Less is more: Parameter-free text classification with gzip, 2022.
+\newblock URL \url{https://arxiv.org/abs/2212.09410}.
+
+\bibitem[Jiang et~al.(2023{\natexlab{b}})Jiang, Yang, Tsirlin, Tang, Dai, and
+  Lin]{jiang-etal-2023-low}
+Zhiying Jiang, Matthew Yang, Mikhail Tsirlin, Raphael Tang, Yiqin Dai, and
+  Jimmy Lin.
+\newblock {``}low-resource{''} text classification: A parameter-free
+  classification method with compressors.
+\newblock In Anna Rogers, Jordan Boyd-Graber, and Naoaki Okazaki, editors,
+  \emph{Findings of the Association for Computational Linguistics: ACL 2023},
+  pages 6810--6828, Toronto, Canada, July 2023{\natexlab{b}}. Association for
+  Computational Linguistics.
+\newblock \doi{10.18653/v1/2023.findings-acl.426}.
+\newblock URL \url{https://aclanthology.org/2023.findings-acl.426}.
+
+\bibitem[Kazdan et~al.(2024)Kazdan, Schaeffer, Dey, Gerstgrasser, Rafailov,
+  Donoho, and Koyejo]{kazdan2024collapseorthrive}
+Joshua Kazdan, Rylan Schaeffer, Apratim Dey, Matthias Gerstgrasser, Rafael
+  Rafailov, David~L. Donoho, and Sanmi Koyejo.
+\newblock Collapse or thrive? perils and promises of synthetic data in a
+  self-generating world, 2024.
+\newblock URL \url{https://arxiv.org/abs/2410.16713}.
+
+\bibitem[Lee et~al.(2023)Lee, Miranda, Sundar, and Koyejo]{lee2023beyond}
+Alycia Lee, Brando Miranda, Sudharsan Sundar, and Sanmi Koyejo.
+\newblock Beyond scale: the diversity coefficient as a data quality metric
+  demonstrates llms are pre-trained on formally diverse data.
+\newblock \emph{arXiv preprint arXiv:2306.13840}, 2023.
+
+\bibitem[Li et~al.(2024)Li, Fang, Smyrnis, Ivgi, Jordan, Gadre, Bansal, Guha,
+  Keh, Arora, et~al.]{li2024datacomp}
+Jeffrey Li, Alex Fang, Georgios Smyrnis, Maor Ivgi, Matt Jordan, Samir Gadre,
+  Hritik Bansal, Etash Guha, Sedrick Keh, Kushal Arora, et~al.
+\newblock Datacomp-lm: In search of the next generation of training sets for
+  language models.
+\newblock \emph{arXiv preprint arXiv:2406.11794}, 2024.
+
+\bibitem[Merity et~al.(2016)Merity, Xiong, Bradbury, and
+  Socher]{merity2016pointer}
+Stephen Merity, Caiming Xiong, James Bradbury, and Richard Socher.
+\newblock Pointer sentinel mixture models.
+\newblock \emph{arXiv preprint arXiv:1609.07843}, 2016.
+
+\bibitem[Miranda et~al.(2024)Miranda, Lee, Sundar, Casasola, and
+  Koyejo]{miranda2024scalediversitycoefficientdata}
+Brando Miranda, Alycia Lee, Sudharsan Sundar, Allison Casasola, and Sanmi
+  Koyejo.
+\newblock Beyond scale: The diversity coefficient as a data quality metric for
+  variability in natural language data, 2024.
+\newblock URL \url{https://arxiv.org/abs/2306.13840}.
+
+\bibitem[Moura et~al.(2015)Moura, Kong, Avigad, Doorn, and von
+  Raumer]{deMoura2015lean}
+Leonardo~De Moura, Soonho Kong, Jeremy Avigad, Floris~Van Doorn, and Jakob von
+  Raumer.
+\newblock The lean theorem prover (system description).
+\newblock In \emph{Automated Deduction - CADE-25: 25th International Conference
+  on Automated Deduction, Berlin, Germany, August 1-7, 2015, Proceedings},
+  pages 378--388. Springer International Publishing, 2015.
+\newblock \doi{10.1007/978-3-319-21401-6\_26}.
+
+\bibitem[Muennighoff(2022)]{sgptgptsentenceembeddings}
+Niklas Muennighoff.
+\newblock Sgpt: Gpt sentence embeddings for semantic search, 2022.
+\newblock URL \url{https://arxiv.org/abs/2202.08904}.
+
+\bibitem[Pandey(2024)]{pandey2024gzippredictsdatadependentscaling}
+Rohan Pandey.
+\newblock gzip predicts data-dependent scaling laws, 2024.
+\newblock URL \url{https://arxiv.org/abs/2405.16684}.
+
+\bibitem[Paster et~al.(2023)Paster, Santos, Azerbayev, and
+  Ba]{openwebmathopendatasethighquality}
+Keiran Paster, Marco~Dos Santos, Zhangir Azerbayev, and Jimmy Ba.
+\newblock Openwebmath: An open dataset of high-quality mathematical web text,
+  2023.
+\newblock URL \url{https://arxiv.org/abs/2310.06786}.
+
+\bibitem[Penedo et~al.(2024)Penedo, Kydlíček, allal, Lozhkov, Mitchell,
+  Raffel, Werra, and Wolf]{penedo2024finewebdatasetsdecantingweb}
+Guilherme Penedo, Hynek Kydlíček, Loubna~Ben allal, Anton Lozhkov, Margaret
+  Mitchell, Colin Raffel, Leandro~Von Werra, and Thomas Wolf.
+\newblock The fineweb datasets: Decanting the web for the finest text data at
+  scale, 2024.
+\newblock URL \url{https://arxiv.org/abs/2406.17557}.
+
+\bibitem[Piantadosi(2014)]{piantadosi2014zipf}
+Steven~T. Piantadosi.
+\newblock Zipf's word frequency law in natural language: a critical review and
+  future directions.
+\newblock \emph{Psychonomic Bulletin \& Review}, 21\penalty0 (5):\penalty0
+  1112--1130, 2014.
+\newblock \doi{10.3758/s13423-014-0585-6}.
+
+\bibitem[Radford et~al.(2019)Radford, Wu, Child, Luan, Amodei, Sutskever,
+  et~al.]{radford2019language}
+Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya
+  Sutskever, et~al.
+\newblock Language models are unsupervised multitask learners.
+\newblock \emph{OpenAI blog}, 1\penalty0 (8):\penalty0 9, 2019.
+
+\bibitem[Raffel et~al.(2020)Raffel, Shazeer, Roberts, Lee, Narang, Matena,
+  Zhou, Li, and Liu]{raffel2020exploring}
+Colin Raffel, Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael
+  Matena, Yanqi Zhou, Wei Li, and Peter~J Liu.
+\newblock Exploring the limits of transfer learning with a unified text-to-text
+  transformer.
+\newblock \emph{Journal of machine learning research}, 21\penalty0
+  (140):\penalty0 1--67, 2020.
+
+\bibitem[Sachdeva et~al.(2024)Sachdeva, Coleman, Kang, Ni, Hong, Chi, Caverlee,
+  McAuley, and Cheng]{sachdeva2024train}
+Noveen Sachdeva, Benjamin Coleman, Wang-Cheng Kang, Jianmo Ni, Lichan Hong,
+  Ed~H Chi, James Caverlee, Julian McAuley, and Derek~Zhiyuan Cheng.
+\newblock How to train data-efficient llms.
+\newblock \emph{arXiv preprint arXiv:2402.09668}, 2024.
+
+\bibitem[Shaib et~al.(2024)Shaib, Barrow, Sun, Siu, Wallace, and
+  Nenkova]{shaib2024standardizing}
+Chantal Shaib, Joe Barrow, Jiuding Sun, Alexa~F. Siu, Byron~C. Wallace, and Ani
+  Nenkova.
+\newblock Standardizing the measurement of text diversity: A tool and a
+  comparative analysis of scores.
+\newblock \emph{arXiv preprint arXiv:2403.00553}, 2024.
+
+\bibitem[Shao et~al.(2024)Shao, Wang, Zhu, Xu, Song, Bi, Zhang, Zhang, Li, Wu,
+  and Guo]{deepseekmath}
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei
+  Zhang, Mingchuan Zhang, Y.~K. Li, Y.~Wu, and Daya Guo.
+\newblock Deepseekmath: Pushing the limits of mathematical reasoning in open
+  language models, 2024.
+\newblock URL \url{https://arxiv.org/abs/2402.03300}.
+
+\bibitem[Sorscher et~al.(2022)Sorscher, Geirhos, Shekhar, Ganguli, and
+  Morcos]{sorscher2022beyond}
+Ben Sorscher, Robert Geirhos, Shashank Shekhar, Surya Ganguli, and Ari Morcos.
+\newblock Beyond neural scaling laws: beating power law scaling via data
+  pruning.
+\newblock \emph{Advances in Neural Information Processing Systems},
+  35:\penalty0 19523--19536, 2022.
+
+\bibitem[Team et~al.(2024)Team, Riviere, Pathak, Sessa, Hardin, Bhupatiraju,
+  Hussenot, Mesnard, Shahriari, Ram{\'e}, et~al.]{team2024gemma}
+Gemma Team, Morgane Riviere, Shreya Pathak, Pier~Giuseppe Sessa, Cassidy
+  Hardin, Surya Bhupatiraju, L{\'e}onard Hussenot, Thomas Mesnard, Bobak
+  Shahriari, Alexandre Ram{\'e}, et~al.
+\newblock Gemma 2: Improving open language models at a practical size.
+\newblock \emph{arXiv preprint arXiv:2408.00118}, 2024.
+
+\bibitem[Tirumala et~al.(2023)Tirumala, Simig, Aghajanyan, and Morcos]{d4}
+Kushal Tirumala, Daniel Simig, Armen Aghajanyan, and Ari~S. Morcos.
+\newblock D4: Improving llm pretraining via document de-duplication and
+  diversification, 2023.
+\newblock URL \url{https://arxiv.org/abs/2308.12284}.
+
+\bibitem[Villalobos et~al.(2024)Villalobos, Ho, Sevilla, Besiroglu, Heim, and
+  Hobbhahn]{villalobos2024rundatalimitsllm}
+Pablo Villalobos, Anson Ho, Jaime Sevilla, Tamay Besiroglu, Lennart Heim, and
+  Marius Hobbhahn.
+\newblock Will we run out of data? limits of llm scaling based on
+  human-generated data, 2024.
+\newblock URL \url{https://arxiv.org/abs/2211.04325}.
+
+\bibitem[Wang et~al.(2020)Wang, Brown, Kaliszyk, and Urban]{Wang_2020}
+Qingxiang Wang, Chad Brown, Cezary Kaliszyk, and Josef Urban.
+\newblock Exploration of neural machine translation in autoformalization of
+  mathematics in mizar.
+\newblock In \emph{Proceedings of the 9th ACM SIGPLAN International Conference
+  on Certified Programs and Proofs}, volume~5 of \emph{POPL ’20}, page
+  85–98. ACM, January 2020.
+\newblock \doi{10.1145/3372885.3373827}.
+\newblock URL \url{http://dx.doi.org/10.1145/3372885.3373827}.
+
+\bibitem[Wettig et~al.(2024)Wettig, Gupta, Malik, and
+  Chen]{wettig2024quratingselectinghighqualitydata}
+Alexander Wettig, Aatmik Gupta, Saumya Malik, and Danqi Chen.
+\newblock Qurating: Selecting high-quality data for training language models,
+  2024.
+\newblock URL \url{https://arxiv.org/abs/2402.09739}.
+
+\bibitem[Wu et~al.(2022)Wu, Jiang, Li, Rabe, Staats, Jamnik, and
+  Szegedy]{autoformalizationlargelanguagemodels}
+Yuhuai Wu, Albert~Q. Jiang, Wenda Li, Markus~N. Rabe, Charles Staats, Mateja
+  Jamnik, and Christian Szegedy.
+\newblock Autoformalization with large language models, 2022.
+\newblock URL \url{https://arxiv.org/abs/2205.12615}.
+
+\bibitem[Xie et~al.(2023{\natexlab{a}})Xie, Pham, Dong, Du, Liu, Lu, Liang, Le,
+  Ma, and Yu]{doremi}
+Sang~Michael Xie, Hieu Pham, Xuanyi Dong, Nan Du, Hanxiao Liu, Yifeng Lu, Percy
+  Liang, Quoc~V. Le, Tengyu Ma, and Adams~Wei Yu.
+\newblock Doremi: Optimizing data mixtures speeds up language model
+  pretraining, 2023{\natexlab{a}}.
+\newblock URL \url{https://arxiv.org/abs/2305.10429}.
+
+\bibitem[Xie et~al.(2023{\natexlab{b}})Xie, Santurkar, Ma, and Liang]{dsir}
+Sang~Michael Xie, Shibani Santurkar, Tengyu Ma, and Percy Liang.
+\newblock Data selection for language models via importance resampling,
+  2023{\natexlab{b}}.
+\newblock URL \url{https://arxiv.org/abs/2302.03169}.
+
+\bibitem[Xie et~al.(2023{\natexlab{c}})Xie, Aggarwal, and
+  Ahmad]{efficientcontinualpretrainingbuilding}
+Yong Xie, Karan Aggarwal, and Aitzaz Ahmad.
+\newblock Efficient continual pre-training for building domain specific large
+  language models, 2023{\natexlab{c}}.
+\newblock URL \url{https://arxiv.org/abs/2311.08545}.
+
+\bibitem[Yang et~al.(2023)Yang, Swope, Gu, Chalamala, Song, Yu, Godil, Prenger,
+  and Anandkumar]{yang2023leandojo}
+Kaiyu Yang, Aidan Swope, Alex Gu, Rahul Chalamala, Peiyang Song, Shixing Yu,
+  Saad Godil, Ryan Prenger, and Anima Anandkumar.
+\newblock {LeanDojo}: Theorem proving with retrieval-augmented language models.
+\newblock \emph{arXiv preprint arXiv:2306.15626}, 2023.
+
+\bibitem[Ying et~al.(2024)Ying, Zhang, Li, Zhou, Shao, Fei, Ma, Hong, Liu,
+  Wang, Wang, Wu, Li, Zhou, Liu, Zhang, Zhang, Yan, Qiu, Wang, Chen, and
+  Lin]{ying2024internlmmathopenmathlarge}
+Huaiyuan Ying, Shuo Zhang, Linyang Li, Zhejian Zhou, Yunfan Shao, Zhaoye Fei,
+  Yichuan Ma, Jiawei Hong, Kuikun Liu, Ziyi Wang, Yudong Wang, Zijian Wu,
+  Shuaibin Li, Fengzhe Zhou, Hongwei Liu, Songyang Zhang, Wenwei Zhang, Hang
+  Yan, Xipeng Qiu, Jiayu Wang, Kai Chen, and Dahua Lin.
+\newblock Internlm-math: Open math large language models toward verifiable
+  reasoning, 2024.
+\newblock URL \url{https://arxiv.org/abs/2402.06332}.
+
+\bibitem[Yoran et~al.(2025)Yoran, Zheng, Gloeckle, Gehring, Synnaeve, and
+  Cohen]{yoran2025kolmogorovtestcompressioncode}
+Ori Yoran, Kunhao Zheng, Fabian Gloeckle, Jonas Gehring, Gabriel Synnaeve, and
+  Taco Cohen.
+\newblock The kolmogorov test: Compression by code generation, 2025.
+\newblock URL \url{https://arxiv.org/abs/2503.13992}.
+
+\bibitem[Zhang et~al.(2022)Zhang, Roller, Goyal, Artetxe, Chen, Chen, Dewan,
+  Diab, Li, Lin, Mihaylov, Ott, Shleifer, Shuster, Simig, Koura, Sridhar, Wang,
+  and Zettlemoyer]{opt}
+Susan Zhang, Stephen Roller, Naman Goyal, Mikel Artetxe, Moya Chen, Shuohui
+  Chen, Christopher Dewan, Mona Diab, Xian Li, Xi~Victoria Lin, Todor Mihaylov,
+  Myle Ott, Sam Shleifer, Kurt Shuster, Daniel Simig, Punit~Singh Koura, Anjali
+  Sridhar, Tianlu Wang, and Luke Zettlemoyer.
+\newblock Opt: Open pre-trained transformer language models, 2022.
+\newblock URL \url{https://arxiv.org/abs/2205.01068}.
+
+\end{thebibliography}

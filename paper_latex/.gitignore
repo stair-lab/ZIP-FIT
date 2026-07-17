@@ -1,0 +1,8 @@
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.blg
+*.synctex.gz
+*_source.tar.gz
