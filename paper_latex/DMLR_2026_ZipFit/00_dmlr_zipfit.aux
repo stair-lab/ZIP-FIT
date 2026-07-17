@@ -1,0 +1,168 @@
+\relax 
+\providecommand\zref@newlabel[2]{}
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\bibstyle{plainnat}
+\citation{brown2020languagemodelsfewshotlearners,dontstoppretrainingadapt,trainingcomputeoptimallargelanguage}
+\citation{sorscher2022beyond,dsir,d4,semdedup,doremi,lee2023beyond,wettig2024quratingselectinghighqualitydata,penedo2024finewebdatasetsdecantingweb,li2024datacomp,sachdeva2024train}
+\citation{deepseekmath}
+\citation{openwebmathopendatasethighquality}
+\citation{enrichingWordVectorsWithSubwordInfo}
+\citation{efficientcontinualpretrainingbuilding}
+\citation{sgptgptsentenceembeddings}
+\citation{dsir}
+\citation{deMoura2015lean}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textbf  {\texttt  {ZIP-FIT} selects task-specific data for efficient finetuning.} (0) Obtain both the source and target datasets. (1) Calculate \texttt  {ZIP-FIT} Alignment of each source example with the target dataset using \texttt  {gzip} compression. (2) Rank all source examples based on these alignment scores. (3) Select the top-K most aligned examples for fine-tuning. (4) Fine-tune a large language model using the selected top-K examples to improve performance on the target task.}}{2}{figure.1}\protected@file@percent }
+\newlabel{fig:zip-fit-vs-baselines}{{1}{2}{\textbf {\texttt {ZIP-FIT} selects task-specific data for efficient finetuning.} (0) Obtain both the source and target datasets. (1) Calculate \texttt {ZIP-FIT} Alignment of each source example with the target dataset using \texttt {gzip} compression. (2) Rank all source examples based on these alignment scores. (3) Select the top-K most aligned examples for fine-tuning. (4) Fine-tune a large language model using the selected top-K examples to improve performance on the target task}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{2}{section.1}\protected@file@percent }
+\newlabel{sec:introduction}{{1}{2}{}{section.1}{}}
+\citation{languagemodelingcompression}
+\citation{compressionrepresentsintelligencelinearly}
+\citation{jiang-etal-2023-low}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textbf  {Code Generation: \texttt  {ZIP-FIT} accelerates cross-entropy loss reduction, even in code-specialized models like CodeGemma-2B.} The plots show cross-entropy test loss versus the number of training tokens for Gemma2-2B (top row) and CodeGemma-2B (bottom row) across different token selection sizes. \texttt  {ZIP-FIT} (blue) consistently reduces loss faster than DSIR (green) and D4 (red), achieving up to $85.11\%$ speed improvement at lower token counts. These results demonstrate \texttt  {ZIP-FIT}'s efficiency in data selection for fine-tuning models on code-geneation tasks. }}{3}{figure.2}\protected@file@percent }
+\newlabel{fig:code-all-models}{{2}{3}{\textbf {Code Generation: \texttt {ZIP-FIT} accelerates cross-entropy loss reduction, even in code-specialized models like CodeGemma-2B.} The plots show cross-entropy test loss versus the number of training tokens for Gemma2-2B (top row) and CodeGemma-2B (bottom row) across different token selection sizes. \texttt {ZIP-FIT} (blue) consistently reduces loss faster than DSIR (green) and D4 (red), achieving up to $85.11\%$ speed improvement at lower token counts. These results demonstrate \texttt {ZIP-FIT}'s efficiency in data selection for fine-tuning models on code-geneation tasks}{figure.2}{}}
+\citation{deMoura2015lean}
+\@writefile{toc}{\contentsline {section}{\numberline {2}\texttt  {ZIP-FIT}: an Embedding-Free Data Selection Algorithm via Compression-Based Alignment for LM Fine-Tuning}{4}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Background}{4}{subsection.2.1}\protected@file@percent }
+\citation{radford2019language}
+\citation{mistral7b}
+\citation{yang2023leandojo}
+\citation{raffel2020exploring}
+\citation{merity2016pointer}
+\citation{yang2023leandojo}
+\citation{raffel2020exploring}
+\citation{merity2016pointer}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces \textbf  {Higher \texttt  {ZIP-FIT} alignment correlates with lower cross-entropy loss.} The relationship between \texttt  {ZIP-FIT} alignment and cross-entropy (CE) loss for (a) GPT-2 trained on 22k tokens ($R^2 = 0.90, p=0.001$) and (b) Mistral7B trained on 22k tokens ($R^2 = 0.75, p=0.025$). Each point represents a dataset, with its position reflecting the dataset’s \texttt  {ZIP-FIT} alignment score against the ProofNet test set and the resulting CE loss. The dashed red line indicates the linear regression fit, while the dashed grey line shows the pretrained CE loss. Higher alignment scores correspond to lower CE losses, demonstrating that training on better aligned data yields better performance.}}{5}{figure.3}\protected@file@percent }
+\newlabel{fig:ce_vs_gzip_align}{{3}{5}{\textbf {Higher \texttt {ZIP-FIT} alignment correlates with lower cross-entropy loss.} The relationship between \texttt {ZIP-FIT} alignment and cross-entropy (CE) loss for (a) GPT-2 trained on 22k tokens ($R^2 = 0.90, p=0.001$) and (b) Mistral7B trained on 22k tokens ($R^2 = 0.75, p=0.025$). Each point represents a dataset, with its position reflecting the dataset’s \texttt {ZIP-FIT} alignment score against the ProofNet test set and the resulting CE loss. The dashed red line indicates the linear regression fit, while the dashed grey line shows the pretrained CE loss. Higher alignment scores correspond to lower CE losses, demonstrating that training on better aligned data yields better performance}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}\texttt  {ZIP-FIT} Algorithm}{5}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Higher alignment interventionally achieves better model performance }{5}{section.3}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces \texttt  {ZIP-FIT} Data Selection Algorithm}}{6}{algorithm.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Higher Alignment leads to more efficient training}{6}{section.4}\protected@file@percent }
+\citation{yang2023leandojo,azerbayev2024llemmaopenlanguagemodel}
+\citation{ying2024internlmmathopenmathlarge}
+\citation{team2024gemma}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces \textbf  {Highly aligned data lowers cross-entropy loss more efficiently.} The x-axis shows the number of training tokens, and the y-axis represents the cross-entropy (CE) test loss on the ProofNet test set. Different curves correspond to datasets filtered by different alignment scores, indicating their relevance to the target domain. The most aligned data reduce Test CE loss significantly faster than less aligned data. The left panel depicts results using GPT-2, and the right panel uses Mistral7B, demonstrating that using highly aligned data not only accelerates training but also achieves better model performance, validating the effectiveness of \texttt  {ZIP-FIT} for data selection in fine-tuning.}}{7}{figure.4}\protected@file@percent }
+\newlabel{fig:more-alignment-lower-loss}{{4}{7}{\textbf {Highly aligned data lowers cross-entropy loss more efficiently.} The x-axis shows the number of training tokens, and the y-axis represents the cross-entropy (CE) test loss on the ProofNet test set. Different curves correspond to datasets filtered by different alignment scores, indicating their relevance to the target domain. The most aligned data reduce Test CE loss significantly faster than less aligned data. The left panel depicts results using GPT-2, and the right panel uses Mistral7B, demonstrating that using highly aligned data not only accelerates training but also achieves better model performance, validating the effectiveness of \texttt {ZIP-FIT} for data selection in fine-tuning}{figure.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Comparative Evaluation of \texttt  {ZIP-FIT} for Efficient Fine-Tuning}{7}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}AutoFormalization}{7}{subsection.5.1}\protected@file@percent }
+\newlabel{app:subsec:autoformalization_dataset}{{5.1}{7}{}{subsection.5.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Experiment:}{7}{subsection.5.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces \textbf  {AutoFormalization: \texttt  {ZIP-FIT} consistently achieves lower test loss more quickly than \texttt  {D4} and \texttt  {DSIR}, demonstrating its efficiency in data selection.} The plots show cross-entropy test loss versus the number of training tokens for three models (InterLM-Math-Plus-1.8B, Gemma2-2B, and Mistral7B) across different token selection sizes. \texttt  {ZIP-FIT} (blue line) consistently outperforms both \texttt  {DSIR} (green line) and D4 (red line) across all model and token size configurations, highlighting its ability to process data more efficiently. The percentage labels in each plot indicate the relative speedup of \texttt  {ZIP-FIT} over \texttt  {DSIR} in reaching the lowest cross-entropy loss, reinforcing the method's scalability and adaptability for domain-specific fine-tuning. }}{8}{figure.5}\protected@file@percent }
+\newlabel{fig:af-all-models}{{5}{8}{\textbf {AutoFormalization: \texttt {ZIP-FIT} consistently achieves lower test loss more quickly than \texttt {D4} and \texttt {DSIR}, demonstrating its efficiency in data selection.} The plots show cross-entropy test loss versus the number of training tokens for three models (InterLM-Math-Plus-1.8B, Gemma2-2B, and Mistral7B) across different token selection sizes. \texttt {ZIP-FIT} (blue line) consistently outperforms both \texttt {DSIR} (green line) and D4 (red line) across all model and token size configurations, highlighting its ability to process data more efficiently. The percentage labels in each plot indicate the relative speedup of \texttt {ZIP-FIT} over \texttt {DSIR} in reaching the lowest cross-entropy loss, reinforcing the method's scalability and adaptability for domain-specific fine-tuning}{figure.5}{}}
+\citation{austin2021programsynthesislargelanguage}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Code Generation}{9}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Experiment:}{9}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Results:}{9}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Impact of Data Misalignment on Model Performance}{9}{section.6}\protected@file@percent }
+\citation{brown2020languagemodelsfewshotlearners,palm2technicalreport2023,deepseekmath}
+\citation{semdedup}
+\citation{d4}
+\citation{glamefficientscalinglanguage,dsir}
+\citation{doremi}
+\citation{Wang_2020,autoformalizationlargelanguagemodels}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Related Works}{10}{section.7}\protected@file@percent }
+\citation{pandey2024gzippredictsdatadependentscaling}
+\citation{jiang2022gzip}
+\citation{languagemodelingcompression}
+\citation{yoran2025kolmogorovtestcompressioncode}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces \textbf  {Selective data filtering with \texttt  {ZIP-FIT} allows us to achieve better cross-entropy test loss faster than training on all the data, resulting in improved performance and efficiency.} The x-axis represents the number of training tokens, while the y-axis shows the cross-entropy test loss. The curves represent models fine-tuned (FT) on datasets filtered by varying alignment thresholds ($>$ 0.1, $>$ 0.2, $>$ 0.3). The dashed line indicates the baseline performance of the pretrained Mistral7B model. Training on data filtered with higher alignment thresholds leads to superior performance, demonstrating the effectiveness of removing misaligned data in fine-tuning. }}{11}{figure.6}\protected@file@percent }
+\newlabel{fig:misaligned-data}{{6}{11}{\textbf {Selective data filtering with \texttt {ZIP-FIT} allows us to achieve better cross-entropy test loss faster than training on all the data, resulting in improved performance and efficiency.} The x-axis represents the number of training tokens, while the y-axis shows the cross-entropy test loss. The curves represent models fine-tuned (FT) on datasets filtered by varying alignment thresholds ($>$ 0.1, $>$ 0.2, $>$ 0.3). The dashed line indicates the baseline performance of the pretrained Mistral7B model. Training on data filtered with higher alignment thresholds leads to superior performance, demonstrating the effectiveness of removing misaligned data in fine-tuning}{figure.6}{}}
+\citation{d4,dsir}
+\citation{villalobos2024rundatalimitsllm}
+\citation{gerstgrasser2024modelcollapseinevitablebreaking,kazdan2024collapseorthrive}
+\citation{miranda2024scalediversitycoefficientdata}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Limitations}{12}{section.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Discussion and Future Work}{12}{section.9}\protected@file@percent }
+\bibdata{iclr2025_conference,references_rylan}
+\zref@newlabel{mdf@pagelabel-1}{\default{9}\page{13}\abspage{13}\mdf@pagevalue{13}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{13}{section.10}\protected@file@percent }
+\bibcite{semdedup}{{1}{2023}{{Abbas et~al.}}{{Abbas, Tirumala, Simig, Ganguli, and Morcos}}}
+\bibcite{austin2021programsynthesislargelanguage}{{2}{2021}{{Austin et~al.}}{{Austin, Odena, Nye, Bosma, Michalewski, Dohan, Jiang, Cai, Terry, Le, and Sutton}}}
+\bibcite{azerbayev2024llemmaopenlanguagemodel}{{3}{2024}{{Azerbayev et~al.}}{{Azerbayev, Schoelkopf, Paster, Santos, McAleer, Jiang, Deng, Biderman, and Welleck}}}
+\bibcite{enrichingWordVectorsWithSubwordInfo}{{4}{2017}{{Bojanowski et~al.}}{{Bojanowski, Grave, Joulin, and Mikolov}}}
+\bibcite{brown2020languagemodelsfewshotlearners}{{5}{2020}{{Brown et~al.}}{{Brown, Mann, Ryder, Subbiah, Kaplan, Dhariwal, Neelakantan, Shyam, Sastry, Askell, Agarwal, Herbert-Voss, Krueger, Henighan, Child, Ramesh, Ziegler, Wu, Winter, Hesse, Chen, Sigler, Litwin, Gray, Chess, Clark, Berner, McCandlish, Radford, Sutskever, and Amodei}}}
+\bibcite{languagemodelingcompression}{{6}{2024}{{Delétang et~al.}}{{Delétang, Ruoss, Duquenne, Catt, Genewein, Mattern, Grau-Moya, Wenliang, Aitchison, Orseau, Hutter, and Veness}}}
+\bibcite{glamefficientscalinglanguage}{{7}{2022}{{Du et~al.}}{{Du, Huang, Dai, Tong, Lepikhin, Xu, Krikun, Zhou, Yu, Firat, Zoph, Fedus, Bosma, Zhou, Wang, Wang, Webster, Pellat, Robinson, Meier-Hellstern, Duke, Dixon, Zhang, Le, Wu, Chen, and Cui}}}
+\bibcite{gerstgrasser2024modelcollapseinevitablebreaking}{{8}{2024}{{Gerstgrasser et~al.}}{{Gerstgrasser, Schaeffer, Dey, Rafailov, Sleight, Hughes, Korbak, Agrawal, Pai, Gromov, Roberts, Yang, Donoho, and Koyejo}}}
+\bibcite{palm2technicalreport2023}{{9}{2023}{{Google}}{{}}}
+\bibcite{dontstoppretrainingadapt}{{10}{2020}{{Gururangan et~al.}}{{Gururangan, Marasović, Swayamdipta, Lo, Beltagy, Downey, and Smith}}}
+\bibcite{trainingcomputeoptimallargelanguage}{{11}{2022}{{Hoffmann et~al.}}{{Hoffmann, Borgeaud, Mensch, Buchatskaya, Cai, Rutherford, de~Las~Casas, Hendricks, Welbl, Clark, Hennigan, Noland, Millican, van~den Driessche, Damoc, Guy, Osindero, Simonyan, Elsen, Rae, Vinyals, and Sifre}}}
+\bibcite{compressionrepresentsintelligencelinearly}{{12}{2024}{{Huang et~al.}}{{Huang, Zhang, Shan, and He}}}
+\bibcite{mistral7b}{{13}{2023{a}}{{Jiang et~al.}}{{Jiang, Sablayrolles, Mensch, Bamford, Chaplot, de~las Casas, Bressand, Lengyel, Lample, Saulnier, Lavaud, Lachaux, Stock, Scao, Lavril, Wang, Lacroix, and Sayed}}}
+\bibcite{jiang2022gzip}{{14}{2022}{{Jiang et~al.}}{{Jiang, Yang, Tsirlin, Tang, and Lin}}}
+\bibcite{jiang-etal-2023-low}{{15}{2023{b}}{{Jiang et~al.}}{{Jiang, Yang, Tsirlin, Tang, Dai, and Lin}}}
+\bibcite{kazdan2024collapseorthrive}{{16}{2024}{{Kazdan et~al.}}{{Kazdan, Schaeffer, Dey, Gerstgrasser, Rafailov, Donoho, and Koyejo}}}
+\bibcite{lee2023beyond}{{17}{2023}{{Lee et~al.}}{{Lee, Miranda, Sundar, and Koyejo}}}
+\bibcite{li2024datacomp}{{18}{2024}{{Li et~al.}}{{Li, Fang, Smyrnis, Ivgi, Jordan, Gadre, Bansal, Guha, Keh, Arora, et~al.}}}
+\bibcite{merity2016pointer}{{19}{2016}{{Merity et~al.}}{{Merity, Xiong, Bradbury, and Socher}}}
+\bibcite{miranda2024scalediversitycoefficientdata}{{20}{2024}{{Miranda et~al.}}{{Miranda, Lee, Sundar, Casasola, and Koyejo}}}
+\bibcite{deMoura2015lean}{{21}{2015}{{Moura et~al.}}{{Moura, Kong, Avigad, Doorn, and von Raumer}}}
+\bibcite{sgptgptsentenceembeddings}{{22}{2022}{{Muennighoff}}{{}}}
+\bibcite{pandey2024gzippredictsdatadependentscaling}{{23}{2024}{{Pandey}}{{}}}
+\bibcite{openwebmathopendatasethighquality}{{24}{2023}{{Paster et~al.}}{{Paster, Santos, Azerbayev, and Ba}}}
+\bibcite{penedo2024finewebdatasetsdecantingweb}{{25}{2024}{{Penedo et~al.}}{{Penedo, Kydlíček, allal, Lozhkov, Mitchell, Raffel, Werra, and Wolf}}}
+\bibcite{piantadosi2014zipf}{{26}{2014}{{Piantadosi}}{{}}}
+\bibcite{radford2019language}{{27}{2019}{{Radford et~al.}}{{Radford, Wu, Child, Luan, Amodei, Sutskever, et~al.}}}
+\bibcite{raffel2020exploring}{{28}{2020}{{Raffel et~al.}}{{Raffel, Shazeer, Roberts, Lee, Narang, Matena, Zhou, Li, and Liu}}}
+\bibcite{sachdeva2024train}{{29}{2024}{{Sachdeva et~al.}}{{Sachdeva, Coleman, Kang, Ni, Hong, Chi, Caverlee, McAuley, and Cheng}}}
+\bibcite{deepseekmath}{{30}{2024}{{Shao et~al.}}{{Shao, Wang, Zhu, Xu, Song, Bi, Zhang, Zhang, Li, Wu, and Guo}}}
+\bibcite{sorscher2022beyond}{{31}{2022}{{Sorscher et~al.}}{{Sorscher, Geirhos, Shekhar, Ganguli, and Morcos}}}
+\bibcite{team2024gemma}{{32}{2024}{{Team et~al.}}{{Team, Riviere, Pathak, Sessa, Hardin, Bhupatiraju, Hussenot, Mesnard, Shahriari, Ram{\'e}, et~al.}}}
+\bibcite{d4}{{33}{2023}{{Tirumala et~al.}}{{Tirumala, Simig, Aghajanyan, and Morcos}}}
+\bibcite{villalobos2024rundatalimitsllm}{{34}{2024}{{Villalobos et~al.}}{{Villalobos, Ho, Sevilla, Besiroglu, Heim, and Hobbhahn}}}
+\bibcite{Wang_2020}{{35}{2020}{{Wang et~al.}}{{Wang, Brown, Kaliszyk, and Urban}}}
+\bibcite{wettig2024quratingselectinghighqualitydata}{{36}{2024}{{Wettig et~al.}}{{Wettig, Gupta, Malik, and Chen}}}
+\bibcite{autoformalizationlargelanguagemodels}{{37}{2022}{{Wu et~al.}}{{Wu, Jiang, Li, Rabe, Staats, Jamnik, and Szegedy}}}
+\bibcite{doremi}{{38}{2023{a}}{{Xie et~al.}}{{Xie, Pham, Dong, Du, Liu, Lu, Liang, Le, Ma, and Yu}}}
+\bibcite{dsir}{{39}{2023{b}}{{Xie et~al.}}{{Xie, Santurkar, Ma, and Liang}}}
+\bibcite{efficientcontinualpretrainingbuilding}{{40}{2023{c}}{{Xie et~al.}}{{Xie, Aggarwal, and Ahmad}}}
+\bibcite{yang2023leandojo}{{41}{2023}{{Yang et~al.}}{{Yang, Swope, Gu, Chalamala, Song, Yu, Godil, Prenger, and Anandkumar}}}
+\bibcite{ying2024internlmmathopenmathlarge}{{42}{2024}{{Ying et~al.}}{{Ying, Zhang, Li, Zhou, Shao, Fei, Ma, Hong, Liu, Wang, Wang, Wu, Li, Zhou, Liu, Zhang, Zhang, Yan, Qiu, Wang, Chen, and Lin}}}
+\bibcite{yoran2025kolmogorovtestcompressioncode}{{43}{2025}{{Yoran et~al.}}{{Yoran, Zheng, Gloeckle, Gehring, Synnaeve, and Cohen}}}
+\bibcite{opt}{{44}{2022}{{Zhang et~al.}}{{Zhang, Roller, Goyal, Artetxe, Chen, Chen, Dewan, Diab, Li, Lin, Mihaylov, Ott, Shleifer, Shuster, Simig, Koura, Sridhar, Wang, and Zettlemoyer}}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}\texttt  {gzip} Compression Details}{18}{appendix.A}\protected@file@percent }
+\newlabel{app:sec:gzip_compression_details}{{A}{18}{}{appendix.A}{}}
+\@writefile{toc}{\contentsline {paragraph}{LZ77 Compression:}{18}{appendix.A}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Huffman Coding:}{18}{appendix.A}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Combined \texttt  {gzip} Compression:}{19}{appendix.A}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Normalized Compression Distance (NCD):}{19}{appendix.A}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}Why Use Compression?}{19}{subsection.A.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Limitations of n-grams:}{19}{subsection.A.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Challenges with Neural Embeddings:}{19}{subsection.A.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}Composition of the Source Dataset for AutoFormalization}{19}{subsection.A.2}\protected@file@percent }
+\newlabel{app:subsec:dataset_composition_af}{{A.2}{19}{}{subsection.A.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Composition of the Source Dataset for Code Generation}{20}{subsection.A.3}\protected@file@percent }
+\newlabel{app:subsec:dataset_composition_code}{{A.3}{20}{}{subsection.A.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.4}Hyperparameters for Model Fine-Tuning}{21}{subsection.A.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Models and Tokenizer:}{21}{subsection.A.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Training Settings:}{21}{subsection.A.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Evaluation Metrics:}{21}{subsection.A.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Data Handling and Logging:}{21}{subsection.A.4}\protected@file@percent }
+\citation{piantadosi2014zipf}
+\citation{piantadosi2014zipf}
+\@writefile{toc}{\contentsline {section}{\numberline {B}Rationale for the Method Name \texttt  {ZIP-FIT}}{22}{appendix.B}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {C}Additional Experimental Results: data selection for efficient fine-tuning using \texttt  {ZIP-FIT}}{23}{appendix.C}\protected@file@percent }
+\newlabel{sec:more-af-plots}{{C}{23}{}{appendix.C}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces \textbf  {\texttt  {ZIP-FIT} consistently achieves a lower test loss at a faster rate compared to D4 and DSIR for Autoformalization}. The plots show the cross-entropy test loss against the number of training tokens for three models (InterLM-Math-Plus-1.8B, Gemma2-2B, and Mistral7B) across various token selection sizes. \texttt  {ZIP-FIT} (blue line) consistently surpasses both DSIR (green line) and D4 (red line) across all model and token size configurations, emphasizing its superior data processing efficiency. The percentage labels in each plot denote the relative speedup of \texttt  {ZIP-FIT} over DSIR in attaining the lowest cross-entropy loss, further underscoring the method’s scalability and adaptability for domain-specific fine-tuning.}}{23}{figure.7}\protected@file@percent }
+\newlabel{fig:af_all_models_lower_ks}{{7}{23}{\textbf {\texttt {ZIP-FIT} consistently achieves a lower test loss at a faster rate compared to D4 and DSIR for Autoformalization}. The plots show the cross-entropy test loss against the number of training tokens for three models (InterLM-Math-Plus-1.8B, Gemma2-2B, and Mistral7B) across various token selection sizes. \texttt {ZIP-FIT} (blue line) consistently surpasses both DSIR (green line) and D4 (red line) across all model and token size configurations, emphasizing its superior data processing efficiency. The percentage labels in each plot denote the relative speedup of \texttt {ZIP-FIT} over DSIR in attaining the lowest cross-entropy loss, further underscoring the method’s scalability and adaptability for domain-specific fine-tuning}{figure.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {D}Baseline Comparison using Pass@1 on HumanEval}{24}{appendix.D}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces \textbf  {Performance and efficiency comparison of data selection methods.} Results show Pass@1 and Pass@10 scores on HumanEval using top 1M tokens for fine-tuning, along with data selection time. Data selection times exclude fine-tuning time.}}{24}{table.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {E}Impact of Compression Algorithms and Levels}{25}{appendix.E}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces \textbf  {Lighter compression preserves crucial information for data selection.} At minimum compression levels, both gzip and LZ4 achieve the strongest Pass@1 scores (11.58\% and 12.19\%), significantly outperforming the base model (6.09\%, dashed line). Performance systematically degrades with increased compression across all algorithms, suggesting that aggressive compression removes valuable alignment signals.}}{25}{figure.8}\protected@file@percent }
+\newlabel{fig:compression_comparison}{{8}{25}{\textbf {Lighter compression preserves crucial information for data selection.} At minimum compression levels, both gzip and LZ4 achieve the strongest Pass@1 scores (11.58\% and 12.19\%), significantly outperforming the base model (6.09\%, dashed line). Performance systematically degrades with increased compression across all algorithms, suggesting that aggressive compression removes valuable alignment signals}{figure.8}{}}
+\citation{opt}
+\citation{d4}
+\citation{opt}
+\citation{d4}
+\@writefile{toc}{\contentsline {section}{\numberline {F}Data Selection Profiling (Run Times)}{27}{appendix.F}\protected@file@percent }
+\newlabel{sec:profiling_run_times}{{F}{27}{}{appendix.F}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces \textbf  {\texttt  {ZIP-FIP} demonstrates lower cross-entropy and lower run time during data selection than competing DSIR and D4 methods.} \texttt  {ZIP-FIT} is cheaper, faster, and better performing. The run times do no include fine-tuning time, since it’s a constant offset across all models. D4's data selection (not shown) takes 5hs because it uses an embedding model (opt-125m \cite  {opt}), the same one as the original paper \cite  {d4}. }}{27}{figure.9}\protected@file@percent }
+\newlabel{fig:profiling_run_times}{{9}{27}{\textbf {\texttt {ZIP-FIP} demonstrates lower cross-entropy and lower run time during data selection than competing DSIR and D4 methods.} \texttt {ZIP-FIT} is cheaper, faster, and better performing. The run times do no include fine-tuning time, since it’s a constant offset across all models. D4's data selection (not shown) takes 5hs because it uses an embedding model (opt-125m \cite {opt}), the same one as the original paper \cite {d4}}{figure.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {G}Qualitative Analysis}{28}{appendix.G}\protected@file@percent }
+\newlabel{tab:code_top_20_zip_fit}{{G}{28}{}{appendix.G}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Beginning characters of the top 20 samples selected by \texttt  {ZIP-FIT} when the target task is code generation.}}{28}{table.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {H}Future Work (Cont.)}{28}{appendix.H}\protected@file@percent }
+\newlabel{tab:code_top_20_dsir}{{G}{29}{}{table.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Beginning characters of the top 20 samples selected by DSIR when the target task is code generation. DSIR does not easily provide alignment scores, so instead we report the \texttt  {ZIP-FIT} scores, which reveals that \texttt  {ZIP-FIT} doesn't score highly the DSIR examples which might explain why \texttt  {ZIP-FIT} achieves better CE loss. }}{29}{table.3}\protected@file@percent }
+\gdef \@abspage@last{30}

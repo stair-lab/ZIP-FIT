@@ -1,0 +1,20 @@
+% \begin{abstract}
+%     Selecting high-quality, aligned data is essential for optimizing the performance of a language model (LM) on a specific target task such as Autoformalization or Python code generation. 
+%     However, many existing data selection algorithms fail to consider the target task distribution, leading to suboptimal performance. 
+%     Due to the high dimensionality of text data, methods that do consider the target distribution often rely on simplistic, sometimes noisy, representations. 
+% For example, DSIR accounts for the target task but uses hashed n-gram features, which can lead to collisions and introduce noise.
+%     In this work, we introduce ZIP-FIT, an embedding-free data selection framework that uses \texttt{gzip} compression to measure the alignment between a target distribution and a large dataset of possible training data.
+%     We show that ZIP-FIT significantly outperforms two leading baselines, DSIR and D4, in selecting training data for AutoFormalization and Python code generation tasks.
+%     Specifically, ZIP-FIT demonstrates a computational speed advantage, performing data selection up to 65.8\% faster than DSIR and achieving its lowest cross-entropy loss up to 85.1\% faster.
+%     Our findings suggest that ZIP-FIT offers a scalable and adaptable approach to data selection, allowing for more precise fine-tuning for code generation domains.
+%     By demonstrating that compression-based data selection can outperform established methods such as DSIR and D4, our research opens new avenues for optimizing model training, thus enhancing the effectiveness and efficiency of machine learning workflows.
+% \end{abstract}
+
+\begin{abstract}
+    Data selection is crucial for optimizing language model (LM) performance on specific tasks, yet most existing methods fail to effectively consider the target task distribution. 
+    Current approaches either ignore task-specific requirements entirely or rely on approximations that fail to capture the nuanced patterns needed for tasks like Autoformalization or code generation.
+    Methods that do consider the target distribution often rely on simplistic, sometimes noisy, representations, like hashed n-gram features, which can lead to collisions and introduce noise.
+    We introduce \texttt{ZIP-FIT}, a data selection framework that uses \texttt{gzip} compression to directly measure alignment between potential training data and the target task distribution.
+    Our key insight is that compression-based similarity captures both syntactic and structural patterns relevant to the target task, enabling more precise selection of truly task-relevant data.
+    In extensive evaluations on Autoformalization and Python code generation, \texttt{ZIP-FIT} significantly outperforms leading baselines like DSIR and D4. Models trained on \texttt{ZIP-FIT}-selected data achieve their lowest cross-entropy loss up to 85.1\% faster than baselines, demonstrating that better task alignment leads to more efficient learning. In addition, \texttt{ZIP-FIT} performs selection up to 65.8\% faster than DSIR and two orders of magnitude faster than D4. Notably, \texttt{ZIP-FIT} shows that smaller, well-aligned datasets often outperform larger but less targeted ones, demonstrating that a small amount of higher quality data is superior to a large amount of lower quality data. Our results imply that task-aware data selection is crucial for efficient domain adaptation, and that compression offers a principled way to measure task alignment. By showing that targeted data selection can dramatically improve task-specific performance, our work provides new insights into the relationship between data quality, task alignment, and model learning efficiency.
+\end{abstract}

@@ -1,0 +1,116 @@
+% !TEX root = 00_dmlr_zipfit.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment
+%  DMLR (Data-centric Machine Learning Research) submission
+%
+%  Converted from the arXiv 2410.18194 source (ICLR-2025 format).
+%  Style: dmlr2e.sty (https://github.com/JmlrOrg/dmlr-style-file)
+%  Sections: 01_abstract .. 07_conclusion, 99_appendix
+%  Bib: iclr2025_conference.bib + references_rylan.bib
+%  Figures: plots/ and diagrams/
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[twoside,11pt]{article}
+\usepackage{dmlr2e}
+
+\usepackage{amsmath,amsfonts,amssymb}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation
+% (must load amsmath/amssymb above first)
+\input{math_commands.tex}
+
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{xcolor}
+\usepackage{mdframed}
+
+\graphicspath{{./}{./plots/}{./diagrams/}}
+
+% Inline review-note macros from the original draft — suppressed in the
+% formatted paper (redefine as \textcolor{purple}{RS: #1} to re-enable).
+\providecommand{\rylan}[1]{}
+\providecommand{\fix}{}
+\providecommand{\new}{}
+
+% Required by dmlr2e.sty — fill in before camera-ready submission
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}}
+
+% Journal heading metadata — fill in before camera-ready submission
+% \dmlrheading{Volume}{Year}{pages}{submitted}{published}{id}{authors}
+
+% Running headers
+\ShortHeadings{ZIP-FIT: Embedding-Free Data Selection}{Obbad, Mlauzi, Miranda, Schaeffer, Obbad, Bedi \& Koyejo}
+
+\firstpageno{1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\title{ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment}
+
+\author{%
+  \name Elyas Obbad$^{1}$ \AND
+  \name Iddah Mlauzi$^{1}$ \AND
+  \name Brando Miranda$^{1}$ \AND
+  \name Rylan Schaeffer$^{1}$ \AND
+  \name Kamal Obbad$^{3}$ \AND
+  \name Suhana Bedi$^{2}$ \AND
+  \name Sanmi Koyejo$^{1}$ \\
+  \addr $^{1}$Department of Computer Science, Stanford University \\
+  \addr $^{2}$Department of Biomedical Data Science, Stanford School of Medicine \\
+  \addr $^{3}$Stanford Biophysics Program, Stanford School of Medicine \\
+  \texttt{\{eobbad, iddah, brando9, sanmi\}@cs.stanford.edu}
+}
+
+\editor{Handling Editor: TBD}
+
+\maketitle
+
+\input{01_abstract}
+
+\begin{keywords}
+data selection, data quality, gzip compression, normalized compression
+distance, task-aware fine-tuning, autoformalization, code generation,
+large language models
+\end{keywords}
+
+\input{02_introduction}
+\input{03_zip_fit}
+\input{04_interventional}
+\input{05_efficient}
+\input{06_misalignment}
+\input{07_conclusion}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Broader Impact Statement (required for DMLR)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\impact{%
+ZIP-FIT is a data-selection method: it uses gzip compression to choose
+training data aligned with a target task. Cheaper, task-aware selection can
+lower the compute and energy cost of adapting language models and make
+high-quality data curation accessible without large embedding models. The
+same targeting, however, inherits whatever biases or gaps are present in the
+target set used to drive selection, and could in principle be used to
+concentrate narrow or undesirable data; practitioners should audit both the
+target specification and the selected corpus, and respect the licensing and
+provenance of source data. All datasets used in this work are publicly
+available.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography  (style plainnat is set by dmlr2e.sty — do NOT re-issue
+% \bibliographystyle or bibtex errors with a duplicate \bibstyle)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliography{iclr2025_conference,references_rylan}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Appendix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\appendix
+
+\input{99_appendix}
+
+\end{document}
