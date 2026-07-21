@@ -14,7 +14,7 @@
 | 6 | Extended-submission (≥30% new) applies to prior conference/workshop publications | **N/A** — no prior publication; prior state is an unpublished double-blind manuscript + no arXiv record found. Disclose the review history on the form ⚠ |
 | 7 | New dataset/benchmark ⇒ datasheet supplement | N/A — no new dataset/benchmark introduced; corpora (FineWeb, FineWeb-EDU, DCLM, C4, Twitter) and all 13 benchmarks pre-exist |
 | 8 | Reproducibility support | Filtering code + distribution-analysis scripts: github.com/eobbad/Compel (`experiments/data_analysis/`); training configs fully specified in §6 |
-| 9 | No concurrent archival submission | ⚠ Confirm the Dec-2025 double-blind review concluded before submitting |
+| 9 | No concurrent archival submission | ✅ Brando confirmed 2026-07-21: not under review anywhere (Dec-2025 round concluded) |
 | 10 | Reviewer test: claims ↔ evidence aligned | Every number transcribed 1:1 from the Dec-2025 PDF (cross-checked against its text layer); no new empirical claims added |
 
 ## Improvement log (DMLR version vs. Dec-2025 review PDF)
@@ -39,6 +39,6 @@
 ## Remaining human steps (Brando / Elyas)
 
 1. Elyas: point to the canonical Compel paper repo; diff/merge this rebuild into it.
-2. Confirm the Dec-2025 double-blind review is concluded (no concurrent submission).
+2. ~~Confirm the Dec-2025 double-blind review is concluded~~ ✅ Done — Brando confirmed 2026-07-21 (not under review anywhere).
 3. Confirm author order/emails; ensure all six authors have OpenReview profiles.
 4. Fill funding + conflicts; submit at https://openreview.net/group?id=DMLR.

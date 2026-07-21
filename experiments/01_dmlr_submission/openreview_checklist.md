@@ -26,7 +26,7 @@ ZIP-FIT is a data-selection method: it chooses fine-tuning data by measuring com
 - **Yes, this extends a workshop paper**: "ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment for Code," poster at the ICML 2025 workshop *DataWorld: Unifying data curation frameworks across domains*.
   Link: https://openreview.net/forum?id=WgZ9C4q9nH (ICML virtual page: https://icml.cc/virtual/2025/48702)
 - **Changes vs. that version (≥30% new content — comfortably satisfied):** the workshop version covered only the code-generation subset. The DMLR version adds: the Autoformalization experiments and analysis; the interventional/misalignment study (§6); the efficiency and selection-cost analysis (§5); compression-algorithm ablations, LESS comparison, and QLoRA/4-bit results (appendix); plus the full appendix of selected-sample analyses.
-- Also on record: arXiv:2410.18194 (allowed, non-archival) and an OpenReview record https://openreview.net/forum?id=4JBEpP6eRS. ⚠ Brando: confirm that record's review process is concluded (DMLR prohibits concurrent archival submissions).
+- Also on record: arXiv:2410.18194 (allowed, non-archival) and an OpenReview record https://openreview.net/forum?id=4JBEpP6eRS. ✅ Confirmed by Brando (2026-07-21): ZIP-FIT is not under review anywhere — that record's process is concluded, so DMLR's no-concurrent-submission rule is satisfied.
 
 ## IRB / human subjects
 N/A — no human subjects research; all datasets are pre-existing public corpora and benchmarks.

@@ -33,7 +33,7 @@ lost this run; optionally re-run a Codex `gpt-5.6-sol` pass after Jul 22.
 | 11 | Spot-checks (Shaib citation complete, no dangling sentence) | PASS |
 
 ## Human must-do before submitting (also in `openreview_checklist.md`)
-1. Confirm the prior OpenReview record `4JBEpP6eRS` is concluded (no concurrent archival submission).
+1. ~~Confirm the prior OpenReview record `4JBEpP6eRS` is concluded~~ ✅ Brando confirmed 2026-07-21: not under review anywhere.
 2. Confirm author order/emails; all 7 authors need OpenReview profiles + co-author consent.
 3. Fill Funding and Conflicts fields.
 4. Submit at https://openreview.net/group?id=DMLR; paste the assigned forum ID into `\def\openreview{...}` at camera-ready.

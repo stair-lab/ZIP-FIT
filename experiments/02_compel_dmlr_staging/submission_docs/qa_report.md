@@ -34,7 +34,7 @@ agent) → clauded (fresh clean-eyes)**, all Claude Fable 5. Optionally re-run a
 
 ## Human must-do before submitting (also in `openreview_checklist.md`)
 1. Elyas: locate the canonical Compel paper repo; diff/merge this rebuild (numbers here match the Dec-2025 PDF exactly).
-2. Confirm the Dec-2025 double-blind review is **concluded** — DMLR prohibits concurrent archival submissions.
+2. ~~Confirm the Dec-2025 double-blind review is concluded~~ ✅ Brando confirmed 2026-07-21: not under review anywhere.
 3. Confirm author order/emails (from Brando's CV); all 6 authors need OpenReview profiles + consent.
 4. Resolve the flagged 8B learning-rate value (2e-3 vs. LLaMA-3's ~3e-4) — `% TODO(internal-review)` in `06_experiments.tex`.
 5. Fill Funding and Conflicts; submit at https://openreview.net/group?id=DMLR.

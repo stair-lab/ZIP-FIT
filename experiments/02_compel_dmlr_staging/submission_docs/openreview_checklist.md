@@ -21,7 +21,7 @@ Compel is a pretraining-data curation method: it filters web-scale corpora using
 
 ## Prior publication disclosure
 - **Not an extension of a published conference/workshop paper** → the ≥30%-new-content rule does not apply.
-- The manuscript was previously under double-blind review (Dec 2025 version). ⚠ State the venue and confirm that review concluded — DMLR prohibits concurrent archival submissions. No arXiv record exists yet (posting to arXiv is allowed and non-archival).
+- The manuscript went through one double-blind review round (Dec 2025 version). ✅ Confirmed by Brando (2026-07-21): that round is concluded and Compel is not under review anywhere, so DMLR's no-concurrent-submission policy is satisfied. ⚠ If the form asks for prior-review history, Elyas/Brando should name the venue of that Dec-2025 round. No arXiv record exists yet (posting to arXiv is allowed and non-archival).
 
 ## IRB / human subjects
 N/A — no human-subjects research; all corpora and benchmarks are pre-existing public resources.

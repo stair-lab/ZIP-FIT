@@ -14,7 +14,7 @@
 | 6 | Extended submissions: ≥30% new content vs. prior conference/workshop publication + disclose and link on the form | Prior pub = ICML 2025 DataWorld workshop poster ("for Code" subset). DMLR version adds AF experiments, efficiency, misalignment study, appendix ⇒ far beyond 30%. Links + change summary drafted in `openreview_checklist.md` |
 | 7 | New dataset/benchmark ⇒ separate datasheet supplement PDF | N/A — no new dataset or benchmark is introduced; all corpora/benchmarks are pre-existing public ones. Stated explicitly on the form |
 | 8 | Reproducibility: code/data availability encouraged (NeurIPS code guidelines, Pineau checklist) | Code: github.com/stair-lab/ZIP-FIT (public pip-installable repo); experiment scripts in `experiments/` |
-| 9 | Concurrent archival submission prohibited (arXiv OK) | arXiv preprint OK. ⚠ Brando must confirm the ICLR OpenReview record (`4JBEpP6eRS`) is concluded/inactive before submitting |
+| 9 | Concurrent archival submission prohibited (arXiv OK) | arXiv preprint OK. ✅ Brando confirmed 2026-07-21: not under review anywhere (the `4JBEpP6eRS` process is concluded) |
 | 10 | Reviewer two-question test: claims supported by evidence; interest to DMLR audience | Every number in the DMLR version traces to the arXiv v2 source; audience fit = data selection methods |
 
 ## Improvement log (DMLR version vs. arXiv v2 source)
@@ -33,7 +33,7 @@
 
 ## Remaining human steps (Brando)
 
-1. Confirm ICLR OpenReview record `4JBEpP6eRS` is inactive (no concurrent archival review) — DMLR prohibits concurrent submissions.
+1. ~~Confirm ICLR OpenReview record `4JBEpP6eRS` is inactive~~ ✅ Done — Brando confirmed 2026-07-21 that ZIP-FIT is not under review anywhere.
 2. Verify author email handles on page 1 and that every author has an OpenReview profile.
 3. Fill funding + conflicts fields (see `openreview_checklist.md`).
 4. Submit at https://openreview.net/group?id=DMLR and, once the forum exists, put its URL in `\def\openreview{...}` for the camera-ready.

@@ -43,8 +43,9 @@ latexmk -pdf 00_dmlr_compel.tex   # output: 00_dmlr_compel.pdf (20 pages)
   ⇒ DMLR's ≥30%-new-content extended-submission rule is **N/A** (it applies only to prior
   conference/workshop *publications*). The DMLR version still adds substantial new content
   (theory section §4, contributions list, repaired citations).
-- **⚠ Dual-submission check**: DMLR prohibits concurrent archival submissions. Brando/Elyas must
-  confirm the earlier double-blind review has concluded before submitting.
+- **✅ Concurrent-submission check cleared**: Brando confirmed (2026-07-21) that Compel is not
+  under review anywhere — the earlier double-blind round is concluded, so DMLR's
+  no-concurrent-submission policy is satisfied.
 - **No new dataset/benchmark introduced** → no datasheet supplement required.
 - **Authors (single-blind, from Brando's CV)**: Elyas Obbad, Brando Miranda, David L. W. Hall,
   Rylan Schaeffer, Sanmi Koyejo, Percy Liang — Stanford. ⚠ Confirm order + emails with Elyas.
