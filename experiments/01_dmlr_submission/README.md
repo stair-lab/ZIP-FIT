@@ -26,10 +26,10 @@ Rebuttal-era experiment code lives in `experiments/rebuttals/zipfit/ft_and_eval.
 ## Key submission facts
 
 - **Prior venue**: "ZIP-FIT: … for Code" appeared as a **poster at the ICML 2025 workshop
-  "DataWorld: Unifying data curation frameworks across domains"**
-  (OpenReview forum `WgZ9C4q9nH`; ICML virtual page 2025/48702).
-  The full paper is an arXiv preprint (2410.18194) with an OpenReview record `4JBEpP6eRS`
-  (ICLR submission; final status could not be verified locally — see `fetch_attempts.md`).
+  "DataWorld: Unifying data curation frameworks across domains"** (icml.cc/virtual/2025/48702).
+  Concluded conference review records (recovered 2026-07-21, full texts in `or_reviews/`):
+  ICLR 2025 full paper `4JBEpP6eRS` (Reject, 8/6/3/1) and ICLR 2026 code version
+  `WgZ9C4q9nH` (2/4/6/6/4). The full paper is an arXiv preprint (2410.18194).
 - **DMLR extended-submission rule**: applies to the workshop version → the DMLR version must
   contain ≥30% new content vs. it. Satisfied trivially: the workshop paper covered only the
   code-generation subset; the DMLR version adds Autoformalization (§4), efficiency analysis (§5),
