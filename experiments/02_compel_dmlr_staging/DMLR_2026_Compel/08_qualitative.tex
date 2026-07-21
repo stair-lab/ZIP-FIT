@@ -1,0 +1,31 @@
+% !TEX root = 00_dmlr_compel.tex
+\section{Compel Qualitatively Selects Higher Quality Text}\label{sec:qualitative}
+
+To better understand the kinds of documents filtered by compression ratio, we visualize examples from each compression band: low ($<0.65$), \textsc{Compel}-kept ($0.65$--$0.80$), and high ($>0.80$).
+We display the beginning lines of real web documents from each region in Figure~\ref{fig:examples}.
+
+\begin{figure}[t]
+\centering
+\small
+\begin{tabular}{p{0.30\textwidth} p{0.30\textwidth} p{0.30\textwidth}}
+\toprule
+$\mathrm{CR} < 0.65$ & $0.65 \le \mathrm{CR} \le 0.80$ & $\mathrm{CR} > 0.80$ \\
+\midrule
+\emph{Asus Laptop Virus Removal Asus Repair Service Area: Asus Laptop Virus Removal Toronto, Laptop Repair GTA, Laptop Repair Thornhill, Laptop Repair Richmond Hill, Laptop Repair Markham, Laptop Repair Vaughan, Laptop Repair Toronto, Laptop Repair Scarborough, Laptop Repair Newmarket, Laptop Repair Mississauga...}
+&
+\emph{This project is solving the Asteroid Watchers challenge. AROs are essentially created by combining a telescope with a smartphone. If the telescope has drive motors controllable via a standard // protocol, it is commanded by the SkyWatch app on the phone. Telescopes without motors need an Arduino-driven stepper setup. We plan to publish a...}
+&
+\emph{\begin{CJK}{UTF8}{gbsn}根香港法律,不得在程中,向未成年人售或供令人醺醉的酒。\end{CJK} Under the law of Hong Kong, intoxicating liquor must not be sold or supplied to a minor in the course of business. Enjoy FREE DELIVERY for orders HK\$1500 (net) or more, otherwise a delivery charge may apply. Hotline: +852 9063 3222 visa visa verified master master secure paypal...} \\
+\bottomrule
+\end{tabular}
+\caption{\textbf{Beginning characters of representative examples} excluded for low compression ratio (left), kept by \textsc{Compel} (middle), and excluded for high compression ratio (right).
+\textsc{Compel} retains the informative mid-range while filtering boilerplate or noisy text.}
+\label{fig:examples}
+\end{figure}
+
+The low-compression examples are dominated by boilerplate keyword stuffing and templated text (e.g., location-specific service listings repeated verbatim).
+High-compression examples tend to be noisy, short, or include artifacts like mixed-language metadata or hexadecimal tables.
+In contrast, documents retained by \textsc{Compel} exhibit higher information density and structural coherence---typically consisting of fluent, formal descriptions, educational explanations, or open-source project write-ups.
+
+Qualitatively, \textsc{Compel} effectively discards content at both ends of the redundancy--entropy spectrum, keeping the center band where well-edited, human-authored text lies.
+This confirms the value of compression ratio as a simple yet powerful signal for improving pretraining data quality.

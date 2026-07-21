@@ -1,0 +1,40 @@
+% !TEX root = 00_dmlr_compel.tex
+\section{Related Work}\label{sec:related}
+
+Data selection pipelines for pretraining large models typically involve a sequence of filtering stages to manage the scale and heterogeneity of web-derived corpora.
+Common goals include removing undesirable content---such as duplicated boilerplate, SEO spam, or template-heavy pages---and maximizing overall data quality.
+
+\paragraph{Language filtering.}
+Language identification is usually performed using lightweight classifiers such as fastText or langdetect \citep{raffel2020exploring, soldaini2024dolma, conneau2019cross, xue2021mt5, laurencon2022roots, grave2018learning}.
+These methods are efficient but require careful threshold tuning to avoid excessive false positives or negatives.
+
+\paragraph{Heuristic filtering.}
+Surface-level heuristics such as document length or the presence of blacklisted terms are commonly used \citep{rae2021scaling, raffel2020exploring, aghajanyan2022htlm}.
+These are computationally cheap but often fail to capture more nuanced indicators of quality.
+
+\paragraph{Quality filtering.}
+Retaining educational, human-written text is a key objective in many pipelines.
+Classifier-based approaches typically train fastText models or hashed-feature classifiers on curated datasets \citep{du2022glam, longpre2023flan}, while perplexity-based methods score documents using language models trained on high-quality corpora \citep{wenzek2020ccnet, wettig2024qurating}.
+Despite strong performance, these methods face limitations: (1) reference corpora may encode cultural or demographic preferences, introducing bias that can marginalize certain dialects, domains, or communities \citep{gururangan2022whose, xu2021detoxifying}, thereby reinforcing existing inequities in model behavior, and (2) the notion of ``quality'' remains inherently subjective and task-dependent \citep{longpre2023flan}.
+In contrast, \textsc{Compel} sidesteps these challenges by avoiding reliance on human-annotated or culturally-specific reference corpora, instead using a purely statistical signal (compression ratio) that generalizes across domains.
+
+\paragraph{LM-based quality filtering.}
+Recent approaches have employed language models for data refinement.
+For instance, \citet{maini2024rephrasing} introduced Web Rephrase Augmented Pre-training (WRAP), which uses instruction-tuned models to paraphrase web documents into styles like Wikipedia or question-answer formats, enhancing data quality and training efficiency.
+Similarly, \citet{su2024nemotron} presented Nemotron-CC, a refined dataset derived from Common Crawl, combining classifier ensembling, synthetic data rephrasing, and reduced reliance on heuristic filters to balance data quality and quantity.
+While effective, these methods are computationally intensive, requiring substantial resources for model inference and data generation.
+
+\paragraph{Compression-based data selection.}
+The link between data compression and language modeling has long been observed \citep{shannon1951prediction}.
+Recent studies reinforce this connection: LMs can act as powerful compressors \citep{deletang2023language}, and generalization ability may correlate with compression capacity \citep{huang2024compression}.
+\citet{pandey2024gzip} proposes a data-dependent scaling law based on gzip compressibility.
+Compression has recently emerged as a scalable, embedding-free signal for data selection and quality estimation.
+\citet{yin2024entropy} selects diverse alignment data by scoring examples based on their incremental compressed size, optimizing corpus diversity.
+ZIP-FIT \citep{obbad2024zipfit} uses Normalized Compression Distance (NCD) to filter source data for fine-tuning tasks, outperforming neural embeddings in settings such as code and autoformalization.
+
+\textsc{Compel} differs from ZIP and ZIP-FIT in both goal and design.
+ZIP aims to construct diverse, low-redundancy subsets for alignment by selecting examples with low incremental compressed size, relying on early-stage training signals and task-specific assumptions.
+ZIP-FIT, in contrast, optimizes similarity to a target task distribution using pairwise Normalized Compression Distance.
+\textsc{Compel}, by comparison, is a general-purpose filter designed for broad pretraining use: it discards overly redundant or noisy documents based purely on raw compression ratio.
+It requires no task-specific supervision, no pairwise comparisons, and no access to model loss signals.
+Its simplicity and speed make it especially attractive for trillion-token pipelines.

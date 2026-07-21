@@ -1,0 +1,114 @@
+% !TEX root = 00_dmlr_compel.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Compel: Curating High Quality Pretraining Data for Language Models
+%  via Compression Ratios
+%  DMLR (Journal of Data-centric Machine Learning Research) submission
+%
+%  Rebuilt from the double-blind review PDF (compel.pdf, 2025-12-01) because no
+%  local .tex source exists on this machine; de-anonymized per DMLR single-blind
+%  policy. Author list from Brando's CV (cv_long.tex, "Preprint 2026" entry).
+%  Style:   dmlr2e.sty  (official, from https://github.com/JmlrOrg/dmlr-style-file)
+%  Bib:     compel_refs.bib (rebuilt from the PDF reference list; placeholder
+%           entries "arXiv:2401.xxxxx"-style repaired with real metadata)
+%  New for DMLR: Section 4 (theoretical grounding: Shannon / Kolmogorov / MDL),
+%  contributions list, Broader Impact, fixed Fig. 3 caption/panel mismatch,
+%  deduplicated examples figure (was Figs. 2 and 5), dropped the leftover ICLR
+%  template placeholder appendix.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[twoside,11pt]{article}
+\usepackage{dmlr2e}
+
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{CJKutf8} % the high-CR example document in Fig.~\ref{fig:examples} is bilingual (Chinese/English)
+
+\graphicspath{{./}{./figures/}}
+
+% Green = improvement over the unfiltered baseline, red = regression (matches the review PDF's tables).
+\newcommand{\imp}[1]{\textcolor[HTML]{1A7F37}{\textbf{#1}}}
+\newcommand{\reg}[1]{\textcolor[HTML]{B91C1C}{\textbf{#1}}}
+
+% Required by dmlr2e.sty — fill in after the OpenReview submission is created
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}}
+
+% Journal heading metadata — fill in at camera-ready
+% \dmlrheading{Volume}{Year}{pages}{submitted}{published}{id}{authors}
+
+\ShortHeadings{Curating Pretraining Data via Compression Ratios}{Obbad, Miranda, Hall, Schaeffer, Koyejo \& Liang}
+
+\firstpageno{1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\title{Curating High Quality Pretraining Data for Language Models via Compression Ratios}
+
+% TODO(internal-review): confirm author order, middle-initial style, and email handles with Elyas before submitting.
+\author{%
+  \name Elyas Obbad$^{1}$ \AND
+  \name Brando Miranda$^{1}$ \AND
+  \name David L.\ W.\ Hall$^{1}$ \AND
+  \name Rylan Schaeffer$^{1}$ \AND
+  \name Sanmi Koyejo$^{1}$ \AND
+  \name Percy Liang$^{1}$ \\
+  \addr $^{1}$Department of Computer Science, Stanford University, Stanford, CA 94305, USA \\
+  \texttt{\{eobbad, brando9, dlwh, rschaef, sanmi, pliang\}@cs.stanford.edu}
+}
+
+\editor{Handling Editor: TBD}
+
+\maketitle
+
+%=========================  Abstract  ==============================%
+\begin{abstract}
+% CS197 move 1 — problem motivation: data quality gates capability, curation at web scale is compute-prohibitive.
+The quality of pretraining data determines the capabilities of language models, yet identifying high-quality data among billions of web documents remains computationally prohibitive.
+% CS197 move 2+3 — prior assumption (quality signals need models/heuristics) and the flip: a model-free scalar suffices.
+We introduce \textsc{Compel}, a simple and scalable data processing step that isolates high-quality text using lightweight, compression-based signals.
+Our key insight is that the compression ratio of text serves as a robust, model-free proxy for information density: low compression ratios typically reflect repetitive or boilerplate content, whereas high ratios may indicate noisy or unnatural text (e.g., HTML spam or phone numbers).
+% CS197 move 4 — instantiation: retain documents inside a calibrated compression-ratio band.
+\textsc{Compel} improves dataset quality by retaining only those documents whose compression ratios fall within a chosen range, determined empirically from high-quality reference datasets, without relying on additional model training or heuristic classifiers.
+% CS197 move 5 — evaluation with concrete numbers.
+\textsc{Compel} improves benchmark performance by 0.4--1.1 points across leading open web-scale datasets---DCLM, FineWeb, and FineWeb-EDU---while requiring only a fraction of the computational resources of traditional filtering methods.
+% CS197 move 6 — implication: a practical, compute-efficient complement to existing quality controls.
+These results show that compression-based filtering is a practical, compute-efficient complement to prevailing quality controls, capable of boosting pretraining data quality at trillion-token scale.
+\end{abstract}
+
+\begin{keywords}
+pretraining data curation, data quality, data filtering, compression ratio, LZ4, information density, minimum description length, large language models, data-centric machine learning
+\end{keywords}
+
+\input{01_introduction}
+\input{02_related_work}
+\input{03_cr_signal}
+\input{04_theory}
+\input{05_method}
+\input{06_experiments}
+\input{07_results}
+\input{08_qualitative}
+\input{09_discussion}
+\input{10_conclusion}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Broader Impact Statement (required by DMLR)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\impact{%
+\textsc{Compel} filters pretraining corpora with a single interpretable scalar, which lowers the compute, energy, and financial cost of data curation and makes quality filtering auditable: every discarded document has a stated, reproducible reason---its compression ratio.
+Two risks deserve attention.
+First, the band used here is calibrated on predominantly English web corpora; applying the same thresholds to other languages, scripts, or code could disproportionately remove valid non-English or mixed-language content (the high-ratio example in Figure~\ref{fig:examples} is bilingual), so practitioners should recalibrate the band per language or domain and audit what is removed.
+Second, any automated quality filter shapes the distribution of voices in the resulting model; although \textsc{Compel} avoids reference-corpus classifiers that can encode cultural preferences, its band is still derived from curated corpora and can inherit their choices.
+All corpora used in this work are publicly available.
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography  (style plainnat is set by dmlr2e.sty — do NOT re-issue
+% \bibliographystyle or bibtex errors with a duplicate \bibstyle)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliography{compel_refs}
+
+\end{document}

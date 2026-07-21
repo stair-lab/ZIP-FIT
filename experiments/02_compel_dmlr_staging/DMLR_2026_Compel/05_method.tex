@@ -1,0 +1,37 @@
+% !TEX root = 00_dmlr_compel.tex
+\section{Compel: A Method for Improving Pretraining Data Quality}\label{sec:method}
+
+\subsection{Desiderata}\label{sec:desiderata}
+
+An effective data selection method for large-scale language model pretraining should satisfy the following criteria:
+\begin{itemize}[leftmargin=1.35em,topsep=2pt,itemsep=1pt]
+\item \textbf{Performance}: It should improve downstream accuracy or generalization relative to unfiltered or naively filtered data.
+\item \textbf{Scalability}: It must operate efficiently over trillions of tokens.
+\item \textbf{Simplicity}: The method should be easy to implement, interpret, and integrate into existing preprocessing pipelines.
+\end{itemize}
+
+\textsc{Compel} is designed with these criteria in mind.
+It is an embedding-free, compression-based filtering method that improves data quality using a single, interpretable scalar: compression ratio.
+It requires no training, inference, or human labels.
+
+\subsection{Background: Compression Algorithms}\label{sec:background}
+
+Lossless compression algorithms reduce file size by exploiting redundancy in the input.
+In this work, we use LZ4, a fast, block-based compressor that employs LZ77-style sliding-window encoding.
+LZ4 is streaming-compatible and operates over raw byte strings, making it ideal for large-scale filtering pipelines.
+Unlike perplexity scores or embedding distances, compression operates without tokenization, external supervision, or model inference.
+
+\subsection{Filtering Criteria}\label{sec:filtering}
+
+Based on empirical observations from Section~\ref{sec:cr-signal}, we define a quality band of compression ratios: $\tau_{\min} = 0.65$ and $\tau_{\max} = 0.80$.
+Let $\mathcal{D} = \{x_1, x_2, \dots, x_N\}$ be a collection of documents in a pretraining corpus.
+Documents with $\mathrm{CR}(x) \in [\tau_{\min}, \tau_{\max}]$ are retained.
+Those falling outside this range are discarded.
+These threshold values were selected based on the inter-quartile ranges observed in high-quality datasets like DCLM and FineWeb-EDU, where well-structured, information-dense documents tend to fall within this band.
+This provides a simple, domain-agnostic filter that effectively removes both overly redundant and noisy examples.
+Section~\ref{sec:theory} gives the information-theoretic reading of this band.
+
+\subsection{Efficiency}\label{sec:efficiency}
+
+\textsc{Compel} is highly efficient and trivially parallelizable.
+On a machine with 500 CPUs, the filter processes over 40{,}000 documents per second using LZ4 compression---an order of magnitude faster than typical perplexity- or classifier-based quality filters.

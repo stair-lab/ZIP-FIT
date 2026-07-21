@@ -1,0 +1,67 @@
+% !TEX root = 00_dmlr_compel.tex
+\section{Compression Ratio as a Signal of Data Quality}\label{sec:cr-signal}
+
+We propose compression ratio as a lightweight, model-free proxy for textual data quality.
+Let $x$ be a document and $c(x)$ its compressed representation using a lossless compression algorithm $c$.
+We define the \emph{compression ratio} of a string $x$ as:
+\begin{equation}\label{eq:cr}
+\mathrm{CR}(x) = \frac{\mathrm{num\_bytes}(c(x))}{\mathrm{num\_bytes}(x)},
+\end{equation}
+where $\mathrm{num\_bytes}(\cdot)$ denotes the number of bytes.
+In this work, we use the LZ4 compressor\footnote{\url{https://lz4.github.io/lz4/}}, selected for its speed and streaming compatibility.
+While using different compressors is cheap and fast, pretraining LMs is not.
+Due to a limited compute budget, we therefore chose to prioritize a single compressor on multiple datasets and multiple language models, over multiple compressors on fewer datasets and LMs, because strong evidence for one compressor is better than weak evidence for multiple compressors.
+To the best of our knowledge, our results do not rely on any specifics of LZ4, and so we conjecture that other compressors would work equally well; experiments would be necessary to test this, and we lacked the compute required.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.49\textwidth]{fig3_cr_twitter.png}\hfill
+\includegraphics[width=0.49\textwidth]{fig3_cr_c4.png}\\[2pt]
+\includegraphics[width=0.49\textwidth]{fig3_cr_fineweb_edu.png}\hfill
+\includegraphics[width=0.49\textwidth]{fig3_cr_dclm.png}
+\caption{\textbf{Compression ratio distributions across datasets.}
+Each panel shows the LZ4 compression-ratio distribution of 1 million randomly sampled documents from the respective corpus.
+\textbf{Top left:} Twitter (noisy, informal) skews high, with median CR $1.28$, reflecting structural noise and short, unstructured content.
+\textbf{Top right:} C4 (minimally filtered) is broad with substantial tails.
+\textbf{Bottom left:} FineWeb-EDU (heuristic plus classifier filtering) is more centralized.
+\textbf{Bottom right:} DCLM (highly curated) peaks sharply near $0.75$.
+As perceived dataset quality improves, the distribution narrows and centralizes.}
+\label{fig:cr-distributions}
+\end{figure}
+
+Figure~\ref{fig:examples} shows examples of documents across different compression ratio bands.
+Manual examination suggests that documents with compression ratios in a Goldilocks zone seem to correspond with higher quality text.
+Low compression ratio documents frequently exhibit repetitive, templated text or keyword stuffing, while those with high compression ratios often feature noise, mixed-language content, or irregular formatting.
+The intermediate range consistently contains structured, coherent, and informative text.
+
+While these qualitative insights are compelling, we seek a more rigorous quantitative assessment.
+To do this, we examine how compression ratio distributions change across datasets known to vary widely in quality.
+Specifically, we ask: \emph{Do higher-quality datasets systematically exclude documents at the extremes of compression ratio distributions?}
+
+To quantitatively investigate this, we analyze compression ratios over a random sample of 1 million documents from each of four corpora: C4, FineWeb-EDU, DCLM, and Twitter.
+These datasets span a broad spectrum of curation strategies and observed downstream quality.
+C4 is a minimally filtered Common Crawl dataset \citep{dodge2021documenting}; FineWeb-EDU applies heuristic and classifier-based filtering \citep{penedo2024fineweb}; DCLM undergoes model-based filtering \citep{li2024datacomp}; and Twitter consists of informal, noisy, and unstructured web content \citep{mohammad2018semeval, barbieri2018semeval}.
+Figure~\ref{fig:cr-distributions} illustrates that as perceived dataset quality improves, compression ratio distributions become narrower and more centralized.
+Lower-quality datasets like C4 have broader distributions with substantial tails, whereas higher-quality datasets such as DCLM exhibit tight, centralized distributions, effectively dropping documents with extreme compression ratios.
+
+These correlational observations motivate a causal exploration: whether actively filtering documents based on compression ratio can concretely enhance downstream language model performance.
+We explore this causal hypothesis in Section~\ref{sec:results}.
+
+\subsection{Alignment with Existing Quality Signals}\label{sec:alignment}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.72\textwidth]{fig4_fwedu_classifier_kde.png}
+\caption{\textbf{Compression ratio mirrors many decisions made by the FineWeb-EDU quality classifier.}
+We plot kernel-density estimates of the LZ4 compression ratio for one million randomly-sampled documents that the classifier \emph{keeps} (blue) versus \emph{discards} (red).
+Lower ratios indicate text that is highly compressible (repetitive/boilerplate), whereas very high ratios often correspond to noisy or degenerate content.}
+\label{fig:fwedu-kde}
+\end{figure}
+
+Figure~\ref{fig:fwedu-kde} provides evidence that compression ratio aligns closely with decisions made by the FineWeb-EDU quality classifier.
+Documents accepted by this classifier predominantly occupy an intermediate compression ratio range (approximately 0.65--0.80), reflecting text that is sufficiently informative yet neither overly repetitive nor excessively noisy.
+Conversely, documents discarded by the classifier display a broader compression ratio distribution, encompassing both highly repetitive (low compression) and noisy or irregular (high compression) extremes.
+
+This alignment underscores compression ratio's utility as an intuitive, distributional proxy for textual quality, capturing much of the information implicitly used by more computationally demanding, model-based classifiers.
+Nevertheless, the notable overlap between the ``kept'' and ``discarded'' distributions indicates inherent limitations of rigid thresholding strategies.
+Many documents near the decision boundaries remain challenging to classify accurately via compression ratio alone.

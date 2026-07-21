@@ -1,0 +1,50 @@
+% !TEX root = 00_dmlr_compel.tex
+\section{Introduction}\label{sec:intro}
+
+Recent advances in language models have been driven by pretraining on massive web-scale corpora \citep{brown2020language, du2022glam, hoffmann2022training, raffel2020exploring, xie2023dsir}.
+However, the sheer size of these datasets---often comprising trillions of tokens---makes efficient data selection both crucial and challenging \citep{albalak2024survey}.
+
+Carefully curated pretraining data improves downstream performance, as shown by corpora like FineWeb-EDU \citep{penedo2024fineweb} and DCLM \citep{li2024datacomp}.
+These datasets rely on multi-stage filtering pipelines that combine language identification, duplication and toxicity checks, and scoring heuristics based on LLMs or perplexity \citep{gehman2020realtoxicity, lee2022deduplicating, marion2023less, albalak2024survey}.
+While these pipelines are effective, the notion of ``high quality'' remains under-defined, and existing filters often reflect implicit or task-specific assumptions \citep{longpre2023flan}.
+As pretraining datasets grow to tens of trillions of tokens, we need fast and interpretable signals to help identify high-quality data at scale.
+
+This raises a core question: \emph{How can we identify high quality data cheaply and quickly?}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig1_pipeline.png}
+\caption{\textbf{\textsc{Compel} filters low-quality documents using compression ratio.}
+(1) Start with a web-scale input corpus.
+(2) Compute the compression ratio (CR) of each document using LZ4 compression.
+(3) Discard documents with CR outside a calibrated quality band (e.g., $[0.65, 0.80]$).
+(4) Retain the filtered corpus for pretraining.
+(5) Pretrain language models with the improved dataset.
+\textsc{Compel} improves data quality using a fast, model-free signal that requires no training, inference, or supervision.}
+\label{fig:pipeline}
+\end{figure}
+
+There are likely many promising answers to this question.
+In this work, we introduce an approach that is complementary to existing methods and integrates easily into current filtering pipelines.
+We propose \textsc{Compel}, a scalable and lightweight filtering method that uses a document's compression ratio as a proxy for information density (Figure~\ref{fig:pipeline}).
+In information theory, data compression encodes information using fewer bits than the original representation, reducing redundancy without losing essential content \citep{shannon1948mathematical}.
+Our key insight is that data compression provides a surprisingly effective signal for identifying high-quality text.
+Intuitively, well-edited, information-rich documents contain meaningful content that is neither overly repetitive nor excessively noisy.
+These documents tend to compress moderately.
+In contrast, boilerplate or repetitive content compresses too well (e.g., thousands of identical HTML tags), while noisy or unnatural data compresses poorly due to its lack of structure.
+By discarding documents with extremely low or high compression ratios, \textsc{Compel} improves the overall information density of a corpus.
+We calibrate filtering thresholds using high-quality reference datasets and show that this lightweight filter can further enhance performance---even when applied on top of state-of-the-art heuristic or model-based filtering.
+
+We validate our method on three leading pretraining corpora---FineWeb, FineWeb-EDU, and DCLM---each of which employs a distinct filtering strategy.
+Across 13 downstream tasks, models trained on \textsc{Compel}-filtered data consistently outperform those trained on the original corpora.
+These improvements are robust and achieved at negligible computational cost.
+The resulting accuracy gains are modest (+0.4--1.1 points), but small, consistent gains from lightweight filters are substantial at scale, offering considerable efficiency benefits on trillion-token datasets \citep{raffel2020exploring, wenzek2020ccnet, ankner2024perplexed}.
+
+\paragraph{Contributions.}
+This work contributes to the data side of language-model development:
+\begin{itemize}[leftmargin=1.35em,topsep=2pt,itemsep=1pt]
+\item A distributional analysis of LZ4 compression ratios across four corpora of varying curation quality (C4, FineWeb-EDU, DCLM, Twitter), showing that higher-quality corpora concentrate in a narrow mid-range band and that this band mirrors the accept/reject decisions of the FineWeb-EDU quality classifier (Section~\ref{sec:cr-signal}).
+\item An information-theoretic account of why an interior compression-ratio band should select learnable text, connecting \textsc{Compel} to Shannon entropy, Kolmogorov complexity, and the minimum description length principle (Section~\ref{sec:theory}).
+\item \textsc{Compel}, a model-free filter that retains documents whose compression ratio falls in a calibrated band ($[0.65, 0.80]$) and processes over 40{,}000 documents per second on 500 CPUs (Sections~\ref{sec:method}).
+\item Pretraining validation at 1.4B and 8B parameters on FineWeb, FineWeb-EDU, and DCLM: macro-average accuracy over 13 benchmarks improves by +1.1, +0.7, and +0.4 points respectively at 1.4B scale, and macro and micro averages also improve at 8B scale (Section~\ref{sec:results}).
+\end{itemize}

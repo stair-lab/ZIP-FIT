@@ -1,0 +1,27 @@
+% !TEX root = 00_dmlr_compel.tex
+\section{Discussion and Limitations}\label{sec:discussion}
+
+\textsc{Compel} was designed to address a fundamental challenge in large-scale language model training: identifying and filtering high-quality data from internet-scale corpora without incurring the cost of large models, supervision, or inference.
+While individual gains from \textsc{Compel} filtering are modest (+0.4--1.1 points), our results demonstrate that these gains are consistent across datasets and model sizes, achieved with negligible computational overhead.
+
+Prior work shows that small, reproducible accuracy improvements can have outsize benefits at scale \citep{marion2023less, ankner2024perplexed, tirumala2023d4}.
+For example, a 1-point improvement in accuracy at trillion-token scale can eliminate the need for hundreds of thousands of additional training steps or significantly reduce reliance on larger, more costly models.
+
+By offering a simple, domain-agnostic filter that drops into existing pipelines, \textsc{Compel} provides a practical path toward higher-quality data at minimal cost---helping bridge the gap between dataset scale and dataset quality.
+
+Our approach has several limitations.
+First, compression thresholds were manually tuned based on observed distributions from reference corpora, which may not generalize optimally across diverse datasets or content domains.
+While these thresholds proved broadly effective, our analysis did not systematically explore their sensitivity or optimality due to computational constraints.
+Future work could automate this process by using adaptive threshold selection techniques that optimize filtering performance on small validation sets or leverage unsupervised clustering over compression distributions.
+
+Second, applying a fixed, global compression threshold across entire corpora inherently ignores variability across different content types or domains.
+More granular, adaptive filtering---especially tailored to specific domains such as code repositories, news, or social media content---could yield further performance gains.
+
+Third, we positioned \textsc{Compel} as a final refinement step in existing filtering pipelines.
+Although this demonstrated its complementary nature and consistent improvements, we believe compression-based filtering may provide greater value when applied earlier in data pipelines.
+Early-stage filtering can reduce the amount of data subject to more expensive processing, making full pipelines more efficient.
+
+Finally, the inherent simplicity of compression ratio as a scalar metric means it cannot capture semantic or nuanced linguistic content distinctions, consistent with the compressor-relative caveat of Section~\ref{sec:theory}.
+Hybrid approaches that combine compression-based signals with lightweight semantic or lexical features could address this shortcoming, refining dataset quality further without incurring significant computational overhead.
+
+Together, these limitations point to several promising directions: (1) adaptive thresholding based on unsupervised signal analysis, (2) domain-specific calibration, (3) early-stage integration into multi-pass pipelines, and (4) hybrid filters that combine compression with complementary lightweight signals.
