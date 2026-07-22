@@ -2,6 +2,13 @@
 
 **TLDR:** Drafted answers for every field of the DMLR OpenReview submission form (submit at https://openreview.net/group?id=DMLR), with the items only Brando can confirm marked ⚠.
 
+## Submit right now (5 steps)
+1. Go to https://openreview.net/group?id=DMLR → "Submit" (log in as brando9@stanford.edu's OpenReview profile).
+2. Upload `paper_latex/DMLR_2026_ZipFit/00_dmlr_zipfit.pdf` (30 pp). If a source archive is requested: `paper_latex/DMLR_2026_ZipFit_source.tar.gz`.
+3. Paste title/abstract/keywords and the prior-publication disclosure from the sections below (30% justification included).
+4. Add all 7 authors (each needs an OpenReview profile — ⚠ unverified ones will block the form).
+5. Fill the two remaining ⚠ fields (funding, conflicts) — everything else is pre-drafted below.
+
 ## Title
 ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment
 

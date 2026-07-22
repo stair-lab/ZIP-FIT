@@ -37,3 +37,12 @@ lost this run; optionally re-run a Codex `gpt-5.6-sol` pass after Jul 22.
 2. Confirm author order/emails; all 7 authors need OpenReview profiles + co-author consent.
 3. Fill Funding and Conflicts fields.
 4. Submit at https://openreview.net/group?id=DMLR; paste the assigned forum ID into `\def\openreview{...}` at camera-ready.
+
+## Mega QA #2 — pre-upload gate (2026-07-21)
+
+Chain (Codex quota-blocked until Jul 22 21:15, Antigravity absent → **clauded fresh → CC → clauded clean-eyes**, disclosed per Hard Rule 8):
+- Stage 1: **PASS 8/8** incl. delta checks (or_reviews consistency vs raw JSON, WgZ9C4q9nH attribution corrected, tarball freshness, submit-now quickstart).
+- Stage 2 (CC): no fixes needed.
+- Stage 3 clean-eyes: **FINAL GATE PASS** — from-scratch 0 errors / 0 undefined (30 pp), page-1 author block (7 authors), dmlr2e-only styles, artifacts current, numbers spot-checked (18.86 on PDF p. 24).
+
+**Verdict: READY TO UPLOAD** (openreview.net/group?id=DMLR; see checklist "Submit right now").
