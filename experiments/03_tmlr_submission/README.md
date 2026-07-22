@@ -4,7 +4,7 @@
 
 ## Submit right now (5 steps)
 1. Go to https://openreview.net/group?id=TMLR → "Submit" (submitting author needs an OpenReview profile; authors are entered on the form, hidden from reviewers).
-2. Upload `paper_latex/TMLR_2026_ZipFit/00_tmlr_zipfit.pdf` (23 pp, anonymized). Supplementary (optional): `paper_latex/TMLR_2026_ZipFit_source.tar.gz`.
+2. Upload `paper_latex/TMLR_2026_ZipFit/00_tmlr_zipfit.pdf` (23 pp, anonymized). Supplementary: `paper_latex/TMLR_2026_ZipFit_supplementary_anon.tar.gz` — anonymized source (author block replaced, provenance comments + `%\rylan{}` notes stripped, `references_rylan.bib`→`references_extra.bib`; compiles 23 pp "Anonymous authors"; leak-swept clean). ⚠ Never upload `TMLR_2026_ZipFit_source.tar.gz` as supplementary — it carries the real author block (archival/camera-ready use only).
 3. Paste title + abstract (from `01_abstract.tex`). Add all 7 authors on the form (each needs an OpenReview profile with a current-institution entry — TMLR computes conflicts from profiles).
 4. Confirm the dual-submission attestation: ✅ not under review anywhere (Brando confirmed 2026-07-21); arXiv preprint (2410.18194) is allowed; prior *rejected* ICLR submissions and the non-archival DataWorld workshop poster do not violate TMLR's prior-publication policy.
 5. Submit. After acceptance: switch the wrapper to `\usepackage[accepted]{tmlr}`, fill `\month/\year/\openreview`, and consider the J2C (journal-to-conference) track.
