@@ -1,5 +1,10 @@
 # 01_dmlr_submission — DMLR 2026 Submission Package for ZIP-FIT
 
+> **⚠ SUPERSEDED as primary venue (2026-07-21):** ZIP-FIT now targets **TMLR** — see
+> `experiments/03_tmlr_submission/` and `paper_latex/TMLR_2026_ZipFit/`. This DMLR package is
+> retained fully submission-ready as the **fallback venue**. Do not submit it to DMLR while the
+> TMLR review is active (both venues prohibit concurrent submissions).
+
 **TLDR:** Everything needed to submit ZIP-FIT to DMLR (Journal of Data-centric Machine Learning Research). The DMLR-formatted paper lives at `paper_latex/DMLR_2026_ZipFit/` (30 pp, official `dmlr2e.sty`, compiles with 0 errors / 0 undefined refs); this folder holds the submission plan, the drafted OpenReview form answers, the external-fetch failure log, and the QA report.
 
 ## Contents
