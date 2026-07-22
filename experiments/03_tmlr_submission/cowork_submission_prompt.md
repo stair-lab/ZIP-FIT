@@ -10,6 +10,7 @@ LOGIN MODEL: you drive my real browser, which is likely ALREADY logged into open
 INTERACTION CONTRACT — be maximally automatic, ask NOTHING until one final checkpoint:
 - Do not ask me questions mid-run. Accumulate every open item (login wall, missing OpenReview profiles, funding, conflicts, consent boxes) into a list.
 - Front-load everything automatable for BOTH submissions in parallel: pre-flight PDF checks, open both forms, fill every field you can verbatim from the checklists, attach the uploads.
+- File uploads are YOURS: drive the picker or set the file input yourself — never hand me a "click Choose File" step (ac Trigger Rule 34).
 - FINAL CHECKPOINT (the only interaction): show me a compact summary — each form's filled fields, plus the accumulated items only I can do. I complete those, review, and click Submit on both. Then resume fully automatic for the closeout (record, push, verify, email).
 - Note: a folder-access dialog for ~/ZIP-FIT and ~/compel at session start is expected — that grant is the session's, not a question for the run.
 
@@ -20,7 +21,7 @@ READ FIRST (ground truth, in this order):
 
 SUBMISSION A — ZIP-FIT → TMLR (https://openreview.net/group?id=TMLR):
 1. Pre-flight (do yourself, in terminal): pdftotext page 1 of ~/ZIP-FIT/paper_latex/TMLR_2026_ZipFit/00_tmlr_zipfit.pdf and CONFIRM it reads "Anonymous authors" + "Paper under double-blind review". If it does not, STOP — wrong file.
-2. Have me log in and open the TMLR submission form. Guide me field by field from tmlr_checklist.md: title, abstract, all 7 authors in order (Obbad, Mlauzi, Miranda, Schaeffer, Obbad, Bedi, Koyejo), upload the anonymized PDF, optional supplementary tarball (~/ZIP-FIT/paper_latex/TMLR_2026_ZipFit_source.tar.gz).
+2. Open the TMLR submission form and fill it field by field from tmlr_checklist.md: title, abstract, all 7 authors in order (Obbad, Mlauzi, Miranda, Schaeffer, Obbad, Bedi, Koyejo), upload the anonymized PDF, and upload the supplementary tarball ~/ZIP-FIT/paper_latex/TMLR_2026_ZipFit_supplementary_anon.tar.gz (leak-audited anonymized source — NEVER upload TMLR_2026_ZipFit_source.tar.gz, which contains the real author block).
 3. If any author's OpenReview profile is missing/incomplete, pause and tell me exactly which and what's needed — do not guess emails.
 4. Dual-submission attestation: answer truthfully per the checklist (nothing under review; arXiv + concluded rejected rounds + non-archival workshop are permitted).
 5. I click Submit. You record the forum URL + submission number.

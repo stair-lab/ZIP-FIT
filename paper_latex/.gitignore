@@ -6,3 +6,4 @@
 *.blg
 *.synctex.gz
 *_source.tar.gz
+*_anon.tar.gz
