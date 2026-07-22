@@ -28,7 +28,7 @@ SUBMISSION A — ZIP-FIT → TMLR (https://openreview.net/group?id=TMLR):
 
 SUBMISSION B — Compel → DMLR (https://openreview.net/group?id=DMLR):
 1. Pre-flight: pdftotext page 1 of ~/compel/paper_latex/DMLR_2026_Compel/00_dmlr_compel.pdf and CONFIRM it shows the six named authors (Obbad, Miranda, Hall, Schaeffer, Koyejo, Liang) — DMLR is single-blind; if it says "Anonymous", STOP — wrong file.
-2. Guide me through the DMLR form using openreview_checklist.md verbatim: title, abstract, keywords, data-centric scope statement, 6 authors, prior-review disclosure (not an extension; 30% rule N/A; prior double-blind round concluded), IRB N/A, datasheet N/A, code links (github.com/eobbad/Compel + Marin note).
+2. Guide me through the DMLR form using openreview_checklist.md verbatim: title, abstract, keywords, data-centric scope statement, 6 authors, prior-review disclosure (not an extension; 30% rule N/A today; ICLR'26 round concluded; ALSO disclose the pending NON-archival Sci-FM@COLM'26 workshop record g2FrQxOpg7 — permitted concurrency), IRB N/A, datasheet N/A, code links (github.com/eobbad/Compel + Marin note).
 3. Funding + conflicts are MINE to fill — prompt me for them (3-year institutions per author; check the DMLR action-editor list against recent collaborators) and wait.
 4. I click Submit. You record the forum URL + submission number.
 

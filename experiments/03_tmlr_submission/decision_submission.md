@@ -10,7 +10,7 @@
 | ZIP-FIT (fallback) | DMLR | `paper_latex/DMLR_2026_ZipFit/` (30 pp) | Submission-ready; banner'd "fallback only" |
 | Compel | **DMLR** (openreview.net/group?id=DMLR, single-blind) | `~/compel/paper_latex/DMLR_2026_Compel/` (20 pp) | Mega QA #2 FINAL GATE PASS; merged PR #1 |
 
-Hard rule: never have the same paper under review at two venues (both venues prohibit concurrent submissions; attested clean 2026-07-21 — neither paper is under review anywhere).
+Hard rule: never have the same paper under review at two ARCHIVAL venues (both journals prohibit archival concurrency; attested clean 2026-07-21). 2026-07-22 update: Compel additionally has a pending NON-archival workshop record (Sci-FM@COLM 2026, `g2FrQxOpg7`, decision ~Jul 24) — permitted by both sides; ZIP-FIT unchanged.
 
 ## Context that shaped the decision
 
