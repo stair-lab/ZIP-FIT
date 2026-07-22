@@ -15,3 +15,5 @@
 - `\month/\year/\openreview` and the `[accepted]` style option are camera-ready fields (intentionally placeholder at submission).
 
 **Verdict: READY TO UPLOAD** — see `README.md` § "Submit right now" and `tmlr_checklist.md`.
+
+> 2026-07-22: author order updated after this QA per Brando (Elyas Obbad -> Brando Miranda -> Iddah Mlauzi -> ...); wrappers + docs synced, packages rebuilt. The anonymized TMLR PDF is unaffected (no visible authors); the change matches what Brando set on the OpenReview form.

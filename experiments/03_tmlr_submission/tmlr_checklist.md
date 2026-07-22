@@ -9,7 +9,7 @@ ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment
 Verbatim from `paper_latex/TMLR_2026_ZipFit/01_abstract.tex` (active block).
 
 ## Authors (entered on the form, hidden from reviewers; order as in source)
-Elyas Obbad, Iddah Mlauzi, Brando Miranda, Rylan Schaeffer, Kamal Obbad, Suhana Bedi, Sanmi Koyejo — Stanford.
+Elyas Obbad, Brando Miranda, Iddah Mlauzi, Rylan Schaeffer, Kamal Obbad, Suhana Bedi, Sanmi Koyejo — Stanford.
 ⚠ Each needs an OpenReview profile with current institution + DBLP/homepage (TMLR derives conflicts from profiles; no separate conflicts field).
 
 ## Double-blind compliance audit (2026-07-21)

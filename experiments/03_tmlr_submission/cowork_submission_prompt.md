@@ -21,7 +21,7 @@ READ FIRST (ground truth, in this order):
 
 SUBMISSION A — ZIP-FIT → TMLR (https://openreview.net/group?id=TMLR):
 1. Pre-flight (do yourself, in terminal): pdftotext page 1 of ~/ZIP-FIT/paper_latex/TMLR_2026_ZipFit/00_tmlr_zipfit.pdf and CONFIRM it reads "Anonymous authors" + "Paper under double-blind review". If it does not, STOP — wrong file.
-2. Open the TMLR submission form and fill it field by field from tmlr_checklist.md: title, abstract, all 7 authors in order (Obbad, Mlauzi, Miranda, Schaeffer, Obbad, Bedi, Koyejo), upload the anonymized PDF, and upload the supplementary tarball ~/ZIP-FIT/paper_latex/TMLR_2026_ZipFit_supplementary_anon.tar.gz (leak-audited anonymized source — NEVER upload TMLR_2026_ZipFit_source.tar.gz, which contains the real author block).
+2. Open the TMLR submission form and fill it field by field from tmlr_checklist.md: title, abstract, all 7 authors in order (E. Obbad, Miranda, Mlauzi, Schaeffer, K. Obbad, Bedi, Koyejo), upload the anonymized PDF, and upload the supplementary tarball ~/ZIP-FIT/paper_latex/TMLR_2026_ZipFit_supplementary_anon.tar.gz (leak-audited anonymized source — NEVER upload TMLR_2026_ZipFit_source.tar.gz, which contains the real author block).
 3. If any author's OpenReview profile is missing/incomplete, pause and tell me exactly which and what's needed — do not guess emails.
 4. Dual-submission attestation: answer truthfully per the checklist (nothing under review; arXiv + concluded rejected rounds + non-archival workshop are permitted).
 5. I click Submit. You record the forum URL + submission number.

@@ -46,3 +46,5 @@ Chain (Codex quota-blocked until Jul 22 21:15, Antigravity absent → **clauded 
 - Stage 3 clean-eyes: **FINAL GATE PASS** — from-scratch 0 errors / 0 undefined (30 pp), page-1 author block (7 authors), dmlr2e-only styles, artifacts current, numbers spot-checked (18.86 on PDF p. 24).
 
 **Verdict: READY TO UPLOAD** (openreview.net/group?id=DMLR; see checklist "Submit right now").
+
+> 2026-07-22: author order updated after this QA per Brando (Elyas Obbad -> Brando Miranda -> Iddah Mlauzi -> ...); wrappers + docs synced, packages rebuilt. The anonymized TMLR PDF is unaffected (no visible authors); the change matches what Brando set on the OpenReview form.

@@ -17,8 +17,8 @@ Use the abstract from `paper_latex/DMLR_2026_ZipFit/01_abstract.tex` (the active
 
 ## Authors (order as in paper — all need OpenReview profiles ⚠)
 1. Elyas Obbad (Stanford CS)
-2. Iddah Mlauzi (Stanford CS)
-3. Brando Miranda (Stanford CS)
+2. Brando Miranda (Stanford CS)
+3. Iddah Mlauzi (Stanford CS)
 4. Rylan Schaeffer (Stanford CS)
 5. Kamal Obbad (Stanford Biophysics, School of Medicine)
 6. Suhana Bedi (Stanford Biomedical Data Science, School of Medicine)

@@ -40,5 +40,5 @@ Rebuttal-era experiment code lives in `experiments/rebuttals/zipfit/ft_and_eval.
   code-generation subset; the DMLR version adds Autoformalization (§4), efficiency analysis (§5),
   the misalignment study (§6), and the full appendix.
 - **No new dataset/benchmark introduced** → no datasheet supplement required (stated on the form).
-- **Authors (single-blind, de-anonymized)**: Elyas Obbad, Iddah Mlauzi, Brando Miranda,
+- **Authors (single-blind, de-anonymized)**: Elyas Obbad, Brando Miranda, Iddah Mlauzi,
   Rylan Schaeffer, Kamal Obbad, Suhana Bedi, Sanmi Koyejo — Stanford.
