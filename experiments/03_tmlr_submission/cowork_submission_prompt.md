@@ -5,7 +5,13 @@
 ```
 We are submitting two QA-gated papers to OpenReview TODAY, coworking: you drive, I (Brando) handle credentials and final clicks. Everything is prepared and verified — your job is faithful execution, recording, and verification. Do NOT edit any paper content.
 
-LOGIN MODEL: you drive my real browser, which is likely ALREADY logged into openreview.net — check first and proceed directly if so (no login needed). Only if you hit a login wall: stop and hand me the keyboard (never type/read my passwords; 2FA is mine). After I sign in, resume driving.
+LOGIN MODEL: you drive my real browser, which is likely ALREADY logged into openreview.net — check first and proceed directly if so (no login needed). If you hit a login wall, leave that tab as-is and continue all other prep; the sign-in becomes an item at the final checkpoint (never type/read my passwords; 2FA is mine).
+
+INTERACTION CONTRACT — be maximally automatic, ask NOTHING until one final checkpoint:
+- Do not ask me questions mid-run. Accumulate every open item (login wall, missing OpenReview profiles, funding, conflicts, consent boxes) into a list.
+- Front-load everything automatable for BOTH submissions in parallel: pre-flight PDF checks, open both forms, fill every field you can verbatim from the checklists, attach the uploads.
+- FINAL CHECKPOINT (the only interaction): show me a compact summary — each form's filled fields, plus the accumulated items only I can do. I complete those, review, and click Submit on both. Then resume fully automatic for the closeout (record, push, verify, email).
+- Note: a folder-access dialog for ~/ZIP-FIT and ~/compel at session start is expected — that grant is the session's, not a question for the run.
 
 READ FIRST (ground truth, in this order):
 1. ~/ZIP-FIT/experiments/03_tmlr_submission/decision_submission.md   (venue decision + fallback rules)
