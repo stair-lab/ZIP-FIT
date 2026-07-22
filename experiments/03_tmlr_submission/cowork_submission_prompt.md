@@ -3,7 +3,9 @@
 **TLDR:** Paste the fenced prompt below into a fresh Claude session (cowork mode, with Brando at the browser) to execute both OpenReview submissions using the already-QA'd packages. The agent drives every step it can, hands identity-bound steps (login, profiles, funding/conflicts, the final Submit click) to Brando, and records the resulting forum links back into the repos.
 
 ```
-We are submitting two QA-gated papers to OpenReview TODAY, coworking: you drive, I (Brando) handle logins and final clicks. Everything is prepared and verified — your job is faithful execution, recording, and verification. Do NOT edit any paper content.
+We are submitting two QA-gated papers to OpenReview TODAY, coworking: you drive, I (Brando) handle credentials and final clicks. Everything is prepared and verified — your job is faithful execution, recording, and verification. Do NOT edit any paper content.
+
+LOGIN MODEL: you drive my real browser, which is likely ALREADY logged into openreview.net — check first and proceed directly if so (no login needed). Only if you hit a login wall: stop and hand me the keyboard (never type/read my passwords; 2FA is mine). After I sign in, resume driving.
 
 READ FIRST (ground truth, in this order):
 1. ~/ZIP-FIT/experiments/03_tmlr_submission/decision_submission.md   (venue decision + fallback rules)
