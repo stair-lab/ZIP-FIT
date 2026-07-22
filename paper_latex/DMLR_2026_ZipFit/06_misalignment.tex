@@ -2,7 +2,7 @@
 
 Existing research showed that data alignment plays a critical role in improving model performance and learning efficiency for downstream tasks. In this section, we explore how misalignment in data can affect model performance and how \texttt{ZIP-FIT} addresses this issue with data selection.
 
-\textbf{Experiment:} We fine-tuned the Mistral7B model on the same source dataset we used for the AutoFormalization experiment (see Appendix \ref{app:subsec:autoformalization_dataset}), filtering data with \texttt{ZIP-FIT} at different alignment thresholds ($>$0.1, $>$0.2, $>$0.3). 
+\textbf{Experiment:} We fine-tuned the Mistral7B model on the same source dataset we used for the AutoFormalization experiment (see Section~\ref{app:subsec:autoformalization_dataset}), filtering data with \texttt{ZIP-FIT} at different alignment thresholds ($>$0.1, $>$0.2, $>$0.3). 
 Each threshold creates a progressively more aligned dataset, where the $>$0.3 dataset is the most aligned, and the $>$0.2 dataset is a superset of the $>$0.3 dataset, including less aligned data. 
 Similarly, the $>$0.1 dataset is a superset of both $>$0.2 and $>$0.3.
 Figure~\ref{fig:misaligned-data} shows CE test loss (y-axis) versus the number of training tokens (x-axis). 
