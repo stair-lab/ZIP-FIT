@@ -1,0 +1,108 @@
+% !TEX root = 00_tmlr_zipfit.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment
+%  TMLR submission (double-blind: \usepackage{tmlr} with no option renders
+%  "Anonymous authors — Paper under double-blind review"; the real author block
+%  below stays in source and is suppressed until the [accepted] option is used).
+%
+%  Content identical to paper_latex/DMLR_2026_ZipFit (arXiv 2410.18194 v2 base
+%  + the three repairs: Shaib citation, citep->citet in Compression block,
+%  resizebox on the widest appendix table). Differences vs the DMLR wrapper:
+%  tmlr style, anonymized submission mode, Broader Impact as a section (TMLR
+%  convention) instead of dmlr2e's \impact{}, explicit \bibliographystyle{tmlr},
+%  no keywords environment (not part of the TMLR format).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass{article}
+\usepackage{tmlr}
+% For camera-ready, switch to: \usepackage[accepted]{tmlr}
+
+\usepackage{amsmath,amsfonts,amssymb}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation
+% (must load amsmath/amssymb above first)
+\input{math_commands.tex}
+
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{xcolor}
+\usepackage{mdframed}
+
+\graphicspath{{./}{./plots/}{./diagrams/}}
+
+% Inline review-note macros from the original draft — suppressed in the
+% formatted paper.
+\providecommand{\rylan}[1]{}
+\providecommand{\fix}{}
+\providecommand{\new}{}
+
+% Filled at camera-ready
+\def\month{XX}
+\def\year{XXXX}
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\title{ZIP-FIT: Embedding-Free Data Selection via Compression-Based Alignment}
+
+% Real authors — hidden by tmlr.sty in submission mode; rendered only with [accepted].
+\author{\name Elyas Obbad \email eobbad@cs.stanford.edu \\
+  \addr Department of Computer Science, Stanford University
+  \AND
+  \name Iddah Mlauzi \email iddah@cs.stanford.edu \\
+  \addr Department of Computer Science, Stanford University
+  \AND
+  \name Brando Miranda \email brando9@cs.stanford.edu \\
+  \addr Department of Computer Science, Stanford University
+  \AND
+  \name Rylan Schaeffer \email rschaef@cs.stanford.edu \\
+  \addr Department of Computer Science, Stanford University
+  \AND
+  \name Kamal Obbad \email kobbad@stanford.edu \\
+  \addr Stanford Biophysics Program, Stanford School of Medicine
+  \AND
+  \name Suhana Bedi \email sbedi@stanford.edu \\
+  \addr Department of Biomedical Data Science, Stanford School of Medicine
+  \AND
+  \name Sanmi Koyejo \email sanmi@cs.stanford.edu \\
+  \addr Department of Computer Science, Stanford University
+}
+
+\maketitle
+
+\input{01_abstract}
+
+\input{02_introduction}
+\input{03_zip_fit}
+\input{04_interventional}
+\input{05_efficient}
+\input{06_misalignment}
+\input{07_conclusion}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Broader Impact Statement (TMLR: unnumbered section before references)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection*{Broader Impact Statement}
+ZIP-FIT is a data-selection method: it uses gzip compression to choose training data aligned with a target task.
+Cheaper, task-aware selection can lower the compute and energy cost of adapting language models and make high-quality data curation accessible without large embedding models.
+The same targeting, however, inherits whatever biases or gaps are present in the target set used to drive selection, and could in principle be used to concentrate narrow or undesirable data; practitioners should audit both the target specification and the selected corpus, and respect the licensing and provenance of source data.
+All datasets used in this work are publicly available.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography (TMLR requires the tmlr bibliography style explicitly)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliography{iclr2025_conference,references_rylan}
+\bibliographystyle{tmlr}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Appendix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\appendix
+
+\input{99_appendix}
+
+\end{document}

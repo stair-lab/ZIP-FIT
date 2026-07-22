@@ -1,0 +1,73 @@
+\section{Related Works}
+
+\textbf{Curating pre-training data} often involves using classifiers to filter high-quality data from large corpora like Common Crawl, as done for models like GPT-3 and PaLM2 \citep{brown2020languagemodelsfewshotlearners, palm2technicalreport2023, deepseekmath}. While effective, this process requires significant computational resources and large volumes of curated data. In contrast, \texttt{ZIP-FIT} efficiently selects relevant data without relying on external models, making it especially useful in data-scarce environments.
+
+\textbf{Deduplication} techniques, such as SemDeDup \citep{semdedup} and D4 \citep{d4}, improve data efficiency by removing duplicate or semantically similar examples using embedding-based clustering. However, these methods are computationally expensive and not tuned to the target task. \texttt{ZIP-FIT} is embedding-free and task-aware, making it both scalable and more effective at selecting relevant data.
+
+\textbf{Mixture weights} are essential when drawing from multiple domains, as they influence the performance of language models \citep{glamefficientscalinglanguage, dsir}. DoReMi (Domain Reweighting with Minimax Optimization) \citep{doremi} proposes a reweighting strategy suitable for handling diverse target distributions, but it primarily focuses on adjusting weights at the domain level. Adapting it to select individual data points for specific target distributions would require substantial modifications to its foundational algorithm. 
+One potential approach would be to effectively transform each data point into a 'mini-domain,' a process that would stray significantly from DoReMi's original purpose and scope. 
+Therefore, we did not use DoReMi in our comparisons because it does not directly address the fine-grained selection needs that \texttt{ZIP-FIT} fulfills. 
+
+\textbf{Autoformalization} refers to the process of translating natural language mathematics into formal language \citep{Wang_2020, autoformalizationlargelanguagemodels}, which is advantageous because formal proofs can be verified for correctness. 
+However, the ability of current models to autoformalize text is limited by the scarcity of human-curated formal data. \texttt{ZIP-FIT} provides a framework for selecting the most relevant data, ensuring that models are trained on aligned datasets that enhance their performance. 
+
+\textbf{Compression: }
+\citet{pandey2024gzippredictsdatadependentscaling} demonstrates that gzip-compressibility predicts how language model scaling laws shift with data complexity, challenging the data-agnostic assumptions of Chinchilla-style scaling laws.
+\citet{jiang2022gzip} use \texttt{gzip}-based compression distance with kNN for zero-shot text classification, outperforming BERT on some datasets.
+\citet{languagemodelingcompression} show that language modeling is equivalent to compression, where even \texttt{gzip} can define predictive distributions via coding length.
+\citet{yoran2025kolmogorovtestcompressioncode} propose the KoLMogorov Test, showing that \texttt{gzip} remains a strong baseline for code-based compression, outperforming pretrained LLMs on real data.
+\citet{shaib2024standardizing} show that \texttt{gzip} compression ratio is a fast, effective proxy for text diversity, capturing key repetition patterns in LLM outputs and aligning with slower lexical metrics e.g., self-BLEU.
+
+\section{Limitations}
+While \texttt{ZIP-FIT} provides a computationally efficient method for data selection, it has several limitations. 
+First, the \texttt{gzip} compression-based alignment may not fully capture nuanced semantic relationships that dense representations can, potentially affecting its effectiveness for complex domains like natural language understanding, where paraphrasing is important. 
+Second, \texttt{ZIP-FIT}’s reliance on \texttt{gzip} means that its performance could vary depending on the nature of the textual data, particularly in highly diverse datasets where compression gains are less apparent. 
+
+
+
+\section{Discussion and Future Work}
+
+\texttt{ZIP-FIT} introduces an efficient, embedding-free approach for data selection in language model fine-tuning. 
+By leveraging compression algorithms to capture redundancies in data, \texttt{ZIP-FIT} enables the alignment of large-scale datasets with a target domain without the computational burden of neural embeddings.
+Our experiments with different compression algorithms (Figure~\ref{fig:compression_comparison}) reveal that lighter compression (e.g., LZ4 at level 0) leads to better performance, achieving a 12.19\% Pass@1 on HumanEval compared to 11.58\% with gzip. This suggests that while compression effectively captures alignment signals, aggressive compression can remove subtle but important patterns. These insights highlight the importance of careful selection of compression parameters in optimizing the quality of data selection.
+Our results show that using compression-based alignment leads to faster convergence and lower cross-entropy loss compared to existing methods like DSIR and D4 \citep{d4, dsir}.
+
+However, this approach highlights the trade-off between simplicity and the ability to capture complex semantic relationships. 
+While compression-based methods offer a lightweight alternative, they might not fully replace embedding-based techniques for highly intricate domains, such as natural language understanding or paraphrases. 
+Nonetheless, \texttt{ZIP-FIT}’s promising results suggest that leveraging compression as a data selection tool can be highly effective, especially in resource-constrained scenarios and economically crucial tasks like code generation, where \texttt{gzip} can leverage the syntactic structure of the data.
+
+
+Future work could explore hybrid models that combine the strengths of compression-based techniques with neural embeddings to further enhance data selection.
+Additionally, extending \texttt{ZIP-FIT} to support more diverse data modalities and investigating its robustness across various domains would provide a more comprehensive understanding of its capabilities and limitations.
+We plan for future work to study its application to complex natural language-only tasks and mathematics, where paraphrasing and semantics are important.
+
+We also plan to explore the use of \texttt{ZIP-FIT} for synthetic data generation. While generating synthetic data is straightforward, selecting high-value samples for training presents challenges, especially when managing limited token budgets \cite{villalobos2024rundatalimitsllm}. 
+Autoformalization is a fantastic task for this exploration, as it inherently has a limited number of tokens, thus simulating the critical challenge of token scarcity. 
+Additionally, studying synthetic data selection is crucial for developing self-improving agents that can avoid model collapse \citep{gerstgrasser2024modelcollapseinevitablebreaking,kazdan2024collapseorthrive} by ensuring high-quality data accumulation.
+
+Furthermore, diversity was identified as an important meta-data property that can influence model performance \citep{miranda2024scalediversitycoefficientdata}. 
+Therefore, we aim to address this in future work by either:  
+(1) developing an algorithm that balances diversity with alignment in data selection, or 
+(2) creating a metric that incorporates diversity as part of its evaluation process.
+
+\begin{mdframed}[backgroundcolor=blue!10, linecolor=blue!50!black, linewidth=2pt, innertopmargin=\baselineskip, innerbottommargin=\baselineskip, innerrightmargin=20pt, innerleftmargin=20pt, roundcorner=10pt]
+\textbf{Key Takeaways:}
+\begin{itemize}
+    \item \textbf{Efficiency in Data Selection:} \texttt{ZIP-FIT} utilizes \texttt{gzip} compression for alignment, demonstrating significant efficiency in selecting domain-specific data, enhancing model fine-tuning.
+    \item \textbf{Resource Optimization:} It outperforms traditional methods like DSIR and D4 by speeding up training and reducing computational demands, beneficial in resource-limited settings.
+    \item \textbf{Domain-Specific Improvements:} Exhibits superior performance in tasks like AutoFormalization and code generation, where precise data alignment is crucial.
+    \item \textbf{Practical Application:} Effective in identifying and using the most relevant data from mixed datasets, proving critical for achieving better domain-specific results.
+\end{itemize}
+\end{mdframed}
+
+\section{Conclusion}
+
+In this work, we introduced \texttt{ZIP-FIT}, an efficient and scalable data selection method that leverages \texttt{gzip}-based compression to enhance the downstream performance of language models for domain-specific tasks. Our experiments demonstrate that \texttt{ZIP-FIT} not only accelerates the fine-tuning process but also significantly improves downstream performance by aligning training data more closely with target tasks. By comparing against established methods like DSIR and D4, \texttt{ZIP-FIT} proved superior in selecting highly-aligned data, especially in complex tasks such as Autoformalization and code generation. This methodology sets a new standard for resource-efficient and effective data selection for model training, providing a step in understanding the choice of training
+data for downstream transfer in LMs.
+
+% \section*{Contributions}
+
+
+% \section*{Acknowledgments}
+% Use unnumbered third level headings for the acknowledgments. All
+% acknowledgments, including those to funding agencies, go at the end of the paper.
